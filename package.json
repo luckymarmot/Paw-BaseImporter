@@ -1,12 +1,17 @@
 {
   "name": "paw-base-importer",
   "description": "An adapter for api-flow made for the Paw App",
-  "keywords": ["api-flow", "paw", "paw-core"],
+  "keywords": [
+    "api-flow",
+    "paw",
+    "paw-core"
+  ],
   "version": "0.0.2",
   "main": "index.js",
   "license": "MIT",
   "homepage": "https://github.com/luckymarmot/Paw-BaseImporter",
   "dependencies": {
+    "api-flow": "0.0.5",
     "babel-plugin-transform-flow-strip-types": "6.3.15",
     "babel-polyfill": "6.3.14",
     "babel-runtime": "6.3.19",
@@ -34,7 +39,7 @@
     "eslint-loader": "1.0.0"
   },
   "scripts": {
-    "test": "$npm_package_options_mocha \"src/**/__tests__/*-test.js\"",
+    "test": "$npm_package_options_mocha \"paw-mocks/**/__tests__/*-test.js\"",
     "lint": "./node_modules/eslint/bin/eslint.js -c linting/prod.yaml src/"
   },
   "options": {
