@@ -1,9 +1,11 @@
-import { UnitTest, registerTest } from '../../utils/TestUtils'
+import { UnitTest, registerTest } from '../../../utils/TestUtils'
 
 import {
 	Mock,
 	PawContextMock,
-	PawRequestMock
+	PawRequestMock,
+    DynamicValue,
+    DynamicString
 } from '../PawMocks'
 
 @registerTest
@@ -268,5 +270,52 @@ export class TestPawMocks extends UnitTest {
         )
 
         this.assertEqual(Object.keys(mock.spy), pawRequestFuncFields)
+    }
+
+    testSimpleDynamicValueMock() {
+        const pawDynamicValueFields = [
+            'toString',
+            'getEvaluatedString'
+        ]
+
+        const mock = new DynamicValue('name', { a: 12 }, '')
+
+        this.assertEqual(
+            Object.keys(mock),
+            [ 'spy', 'type', ...pawDynamicValueFields, 'a', 'spyOn', 'getSpy' ]
+        )
+
+        this.assertEqual(Object.keys(mock.spy), pawDynamicValueFields)
+    }
+
+    testSimpleDynamicStringMock() {
+        const pawDynamicStringFields = [
+            'toString',
+            'getComponentAtIndex',
+            'getSimpleString',
+            'getOnlyString',
+            'getOnlyDynamicValue',
+            'getEvaluatedString',
+            'copy',
+            'appendString',
+            'appendDynamicValue',
+            'appendDynamicString'
+        ]
+
+        const mock = new DynamicString('Hello', 'World')
+
+        this.assertEqual(
+            Object.keys(mock),
+            [
+                '$$_spy',
+                'length',
+                'components',
+                ...pawDynamicStringFields,
+                '$$_spyOn',
+                '$$_getSpy'
+            ]
+        )
+
+        this.assertEqual(Object.keys(mock.$$_spy), pawDynamicStringFields)
     }
 }

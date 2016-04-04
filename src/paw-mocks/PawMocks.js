@@ -9,7 +9,7 @@ export class Mock {
                 spies[field] = {
                     count: 0,
                     calls: [],
-                    func: () => {}
+                    func: obj[field]
                 }
             }
         }
@@ -49,23 +49,23 @@ export class Mock {
 export class PawContextMock extends Mock {
     constructor(baseObj, prefix) {
         let obj = {
-            getCurrentRequest: Function,
-            getRequestByName: Function,
-            getRequestGroupByName: Function,
-            getRootRequestTreeItems: Function,
-            getRootRequests: Function,
-            getAllRequests: Function,
-            getAllGroups: Function,
-            getEnvironmentDomainByName: Function,
-            getEnvironmentVariableByName: Function,
-            getRequestById: Function,
-            getRequestGroupById: Function,
-            getEnvironmentDomainById: Function,
-            getEnvironmentVariableById: Function,
-            getEnvironmentById: Function,
-            createRequest: Function,
-            createRequestGroup: Function,
-            createEnvironmentDomain: Function
+            getCurrentRequest: () => {},
+            getRequestByName: () => {},
+            getRequestGroupByName: () => {},
+            getRootRequestTreeItems: () => {},
+            getRootRequests: () => {},
+            getAllRequests: () => {},
+            getAllGroups: () => {},
+            getEnvironmentDomainByName: () => {},
+            getEnvironmentVariableByName: () => {},
+            getRequestById: () => {},
+            getRequestGroupById: () => {},
+            getEnvironmentDomainById: () => {},
+            getEnvironmentVariableById: () => {},
+            getEnvironmentById: () => {},
+            createRequest: () => {},
+            createRequestGroup: () => {},
+            createEnvironmentDomain: () => {}
         }
         Object.assign(obj, baseObj)
         super(obj, prefix)
@@ -95,19 +95,55 @@ export class PawRequestMock extends Mock {
             redirectMethod: null,
             sendCookies: null,
             storeCookies: null,
-            getUrl: Function,
-            getHeaders: Function,
-            getHeaderByName: Function,
-            setHeader: Function,
-            getHttpBasicAuth: Function,
-            getOAuth1: Function,
-            getOAuth2: Function,
-            getBody: Function,
-            getUrlEncodedBody: Function,
-            getMultipartBody: Function,
-            getLastExchange: Function
+            getUrl: () => {},
+            getHeaders: () => {},
+            getHeaderByName: () => {},
+            setHeader: () => {},
+            getHttpBasicAuth: () => {},
+            getOAuth1: () => {},
+            getOAuth2: () => {},
+            getBody: () => {},
+            getUrlEncodedBody: () => {},
+            getMultipartBody: () => {},
+            getLastExchange: () => {}
         }
         Object.assign(obj, baseObj)
         super(obj, prefix)
     }
+}
+
+export class DynamicValue extends Mock {
+    constructor(type, baseObj, prefix = '$$_') {
+        let obj = {
+            type: type,
+            toString: () => {},
+            getEvaluatedString: () => {}
+        }
+        Object.assign(obj, baseObj)
+        super(obj, prefix)
+    }
+}
+
+export class DynamicString extends Mock {
+    constructor(...items) {
+        let obj = {
+            length: null,
+            components: items,
+            toString: () => {},
+            getComponentAtIndex: () => {},
+            getSimpleString: () => {},
+            getOnlyString: () => {},
+            getOnlyDynamicValue: () => {},
+            getEvaluatedString: () => {},
+            copy: () => {},
+            appendString: () => {},
+            appendDynamicValue: () => {},
+            appendDynamicString: () => {}
+        }
+        super(obj, '$$_')
+    }
+}
+
+export const registerImporter = (_class) => {
+    return _class
 }
