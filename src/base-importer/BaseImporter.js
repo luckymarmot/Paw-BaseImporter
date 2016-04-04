@@ -1,15 +1,11 @@
 import RequestContext, { FileReference, Auth, Request } from 'api-flow'
 
 import {
-    registerImporter,
     DynamicValue,
     DynamicString
 } from '../paw-mocks/PawShims'
 
-@registerImporter
 export default class BaseImporter {
-    static identifier = 'com.luckymarmot.PawExtensions.BaseImporter';
-    static title = 'Base Importer';
 
     _resolveFileReference(value) {
         if (value instanceof FileReference) {
