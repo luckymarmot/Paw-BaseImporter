@@ -46,6 +46,23 @@ export class Mock {
     }
 }
 
+export class ClassMock extends Mock {
+    constructor(instance, prefix = '$$_') {
+        let properties = Object.getOwnPropertyNames(
+            Object.getPrototypeOf(instance)
+        )
+
+        let obj = {}
+        for (let property of properties) {
+            if (property !== 'constructor') {
+                obj[property] = ::Object.getPrototypeOf(instance)[property]
+            }
+        }
+
+        super(obj, prefix)
+    }
+}
+
 export class PawContextMock extends Mock {
     constructor(baseObj, prefix) {
         let obj = {

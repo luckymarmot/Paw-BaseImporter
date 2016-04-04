@@ -1,4 +1,4 @@
-import RequestContext, { FileReference, Auth } from 'api-flow'
+import RequestContext, { FileReference, Auth, Request } from 'api-flow'
 
 import {
     registerImporter,
@@ -6,7 +6,7 @@ import {
     DynamicString
 } from '../paw-mocks/PawShims'
 
-@registerImporter // eslint-disable-line
+@registerImporter
 export default class BaseImporter {
     static identifier = 'com.luckymarmot.PawExtensions.BaseImporter';
     static title = 'Base Importer';
@@ -142,13 +142,14 @@ export default class BaseImporter {
     }
 
     _setFormDataBody(pawReq, body) {
-        const keyValues = body.map((value, key) => {
-            return [
-                this._toDynamicString(key, true, true),
-                this._toDynamicString(value, true, true),
+        let keyValues = []
+        for (let keyValue of body) {
+            keyValues.push([
+                this._toDynamicString(keyValue.get('key'), true, true),
+                this._toDynamicString(keyValue.get('value'), true, true),
                 true
-            ]
-        }).toArray()
+            ])
+        }
         const dv = new DynamicValue(
             'com.luckymarmot.BodyMultipartFormDataDynamicValue', {
                 keyValues: keyValues
@@ -199,7 +200,7 @@ export default class BaseImporter {
         return pawReq
     }
 
-    _setBody(pawReq, bodyType, body, bodyString, contentType, schema) {
+    _setBody(pawReq, bodyType, body, schema) {
         const bodyRules = {
             formData: this._setFormDataBody,
             urlEncoded: this._setUrlEncodedBody,
@@ -235,12 +236,10 @@ export default class BaseImporter {
         const auth = request.get('auth')
         const bodyType = request.get('bodyType')
         const body = request.get('body')
-        const bodyString = request.get('bodyString')
-        const contentType = headers.get('Content-Type')
         const timeout = request.get('timeout')
 
         // url + method
-        let pawRequest = this.createRequest(context, request)
+        let pawRequest = this._createPawRequest(context, request)
 
         pawRequest.description = request.get('description')
 
@@ -255,8 +254,6 @@ export default class BaseImporter {
             pawRequest,
             bodyType,
             body,
-            bodyString,
-            contentType,
             schema
         )
 
@@ -266,12 +263,12 @@ export default class BaseImporter {
         }
 
         // parent
-        if (options.parent) {
+        if (options && options.parent) {
             pawRequest.parent = options.parent
         }
 
         // order
-        if (options.order) {
+        if (options && options.order) {
             pawRequest.order = options.order
         }
 
