@@ -6,8 +6,8 @@
     "paw",
     "paw-core"
   ],
-  "version": "0.0.3",
-  "main": "index.js",
+  "version": "0.0.5",
+  "main": "lib/index.js",
   "license": "MIT",
   "homepage": "https://github.com/luckymarmot/Paw-BaseImporter",
   "dependencies": {

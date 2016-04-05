@@ -744,7 +744,7 @@ export class TestBaseImporter extends UnitTest {
 
         importer.import.apply(
             mockedImporter,
-            [ contextMock, null, null ]
+            [ contextMock, [ null ], null ]
         )
 
         this.assertEqual(mockedImporter.spy.createRequestContext.count, 1)

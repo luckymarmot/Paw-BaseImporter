@@ -305,8 +305,8 @@ export default class BaseImporter {
         - context
         - string
     */
-    createRequestContextFromString() {
-        throw new Error('BaseImporter is an abstract class')
+    createRequestContextFromString(context, string) {
+        return this.createRequestContext(context, { content: string }, {})
     }
 
     importString(context, string) {
@@ -335,17 +335,22 @@ export default class BaseImporter {
     }
 
     import(context, items, options) {
-        const requestContext = this.createRequestContext(
-            context,
-            items,
-            options
-        )
-        if (!(requestContext instanceof RequestContext)) {
-            throw new Error(
-                'createRequestContext ' +
-                'did not return an instance of RequestContext'
+        for (let item of items) {
+            const requestContext = this.createRequestContext(
+                context,
+                item,
+                options
             )
+            if (!(requestContext instanceof RequestContext)) {
+                throw new Error(
+                    'createRequestContext ' +
+                    'did not return an instance of RequestContext'
+                )
+            }
+            this._importPawRequests(context, requestContext, options)
+            if (options && options.order) {
+                options.order += 1
+            }
         }
-        this._importPawRequests(context, requestContext, options)
     }
 }
