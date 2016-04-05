@@ -51,7 +51,7 @@ export class TestRepositoryIndex extends UnitTest {
                 DynamicValue: this.assertTrue(!!_module.Shim.DynamicValue),
                 DynamicString: this.assertTrue(!!_module.Shim.DynamicString)
             },
-            default: this.assertEqual(!!_module.default)
+            default: this.assertTrue(!!_module.default)
         }
     }
 }

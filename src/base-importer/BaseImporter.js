@@ -348,7 +348,7 @@ export default class BaseImporter {
                 )
             }
             this._importPawRequests(context, requestContext, options)
-            if (options.order) {
+            if (options && options.order) {
                 options.order += 1
             }
         }
