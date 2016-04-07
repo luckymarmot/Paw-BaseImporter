@@ -154,6 +154,16 @@ export default class BaseImporter {
                 )
                 pawReq.setHeader('Authorization', new DynamicString(dv))
             }
+            else if (auth instanceof Auth.Digest) {
+                const dv = new DynamicValue(
+                    'com.luckymarmot.PawExtensions.DigestAuthDynamicValue',
+                    {
+                        username: auth.get('username', ''),
+                        password: auth.get('password', '')
+                    }
+                )
+                pawReq.setHeader('Authorization', new DynamicString(dv))
+            }
             else if (auth instanceof Auth.OAuth2) {
                 const grantMap = {
                     accessCode: 0,
