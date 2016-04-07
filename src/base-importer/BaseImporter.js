@@ -87,7 +87,7 @@ export default class BaseImporter {
         url = this._setAuthInUrl(
             url,
             request.get('auth') || [],
-            request.get('queries') || []
+            (request.get('queries') || []).length > 0
         )
         return context.createRequest(
             request.get('name'),
@@ -120,13 +120,13 @@ export default class BaseImporter {
         return pawReq
     }
 
-    _setAuthInUrl(url, auths, queries) {
+    _setAuthInUrl(url, auths, hasQueries) {
         let _url = url
         for (let auth of auths) {
             if (auth instanceof Auth.ApiKey) {
                 if (auth.get('in') === 'query') {
                     let urlPart = ''
-                    if (!queries || queries.length <= 0) {
+                    if (!hasQueries) {
                         urlPart += '?'
                     }
                     else {
