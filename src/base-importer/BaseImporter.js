@@ -145,7 +145,7 @@ export default class BaseImporter {
     /*
         TODO: Add OAuth1 support when API-flow will support it
     */
-    _setAuth(pawReq, auths, queries) {
+    _setAuth(pawReq, auths) {
         for (let auth of auths) {
             if (auth instanceof Auth.Basic) {
                 const dv = new DynamicValue(
@@ -292,7 +292,6 @@ export default class BaseImporter {
     _importPawRequest(context, options, parent, request, schema) {
         const headers = request.get('headers')
         const auth = request.get('auth')
-        const queries = request.get('queries')
         const bodyType = request.get('bodyType')
         const body = request.get('body')
         const timeout = request.get('timeout')
@@ -306,7 +305,7 @@ export default class BaseImporter {
         pawRequest = this._setHeaders(pawRequest, headers)
 
         // auth
-        pawRequest = this._setAuth(pawRequest, auth, queries)
+        pawRequest = this._setAuth(pawRequest, auth)
 
         // body
         pawRequest = this._setBody(
