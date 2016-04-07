@@ -1,4 +1,4 @@
-import RequestContext, { FileReference, Auth, Request } from 'api-flow'
+import RequestContext, { FileReference, Auth, Request, KeyValue } from 'api-flow'
 
 import {
     DynamicValue,
@@ -80,14 +80,10 @@ export default class BaseImporter {
     }
 
     _createPawRequest(context, request) {
-        let url = this._generateUrl(
+        let url = ::this._generateUrl(
             request.get('url'),
-            request.get('queries') || []
-        )
-        url = this._setAuthInUrl(
-            url,
-            request.get('auth') || [],
-            (request.get('queries') || []).length > 0
+            request.get('queries'),
+            request.get('auth')
         )
         return context.createRequest(
             request.get('name'),
@@ -100,10 +96,26 @@ export default class BaseImporter {
         )
     }
 
-    _generateUrl(url, queries) {
+    _extractQueryParamsFromAuth(auths) {
+        return (auths || []).filter((auth) => {
+            return auth instanceof Auth.ApiKey && auth.get('in') === 'query'
+        }).map((auth) => {
+            return new KeyValue({
+                key: encodeURI(auth.get('name') || ''),
+                value: encodeURI(auth.get('name') || '')
+            })
+        }).toArray()
+    }
+
+    _generateUrl(url, queries, auths) {
         let _url = url
-        if (queries && queries.length > 0) {
-            _url += '?' + queries.map((keyValue) => {
+
+        let queryParams = (queries || []).concat(
+            this._extractQueryParamsFromAuth(auths)
+        )
+
+        if (queryParams.length > 0) {
+            _url += '?' + queryParams.map((keyValue) => {
                 return keyValue.get('key') + '=' + (keyValue.get('value') || '')
             }).join('&')
         }
@@ -118,28 +130,6 @@ export default class BaseImporter {
             )
         })
         return pawReq
-    }
-
-    _setAuthInUrl(url, auths, hasQueries) {
-        let _url = url
-        for (let auth of auths) {
-            if (auth instanceof Auth.ApiKey) {
-                if (auth.get('in') === 'query') {
-                    let urlPart = ''
-                    if (!hasQueries) {
-                        urlPart += '?'
-                    }
-                    else {
-                        urlPart += '&'
-                    }
-                    _url = _url + urlPart +
-                        encodeURI(auth.get('name') || '') +
-                        '=' +
-                        encodeURI(auth.get('name') || '')
-                }
-            }
-        }
-        return _url
     }
 
     /*
