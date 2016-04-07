@@ -1,4 +1,9 @@
-import RequestContext, { FileReference, Auth, Request, KeyValue } from 'api-flow'
+import RequestContext, {
+    FileReference,
+    Auth,
+    Request,
+    KeyValue
+} from 'api-flow'
 
 import {
     DynamicValue,
@@ -101,8 +106,8 @@ export default class BaseImporter {
             return auth instanceof Auth.ApiKey && auth.get('in') === 'query'
         }).map((auth) => {
             return new KeyValue({
-                key: encodeURI(auth.get('name') || ''),
-                value: encodeURI(auth.get('name') || '')
+                key: auth.get('name'),
+                value: auth.get('name')
             })
         }).toArray()
     }
@@ -116,7 +121,9 @@ export default class BaseImporter {
 
         if (queryParams.length > 0) {
             _url += '?' + queryParams.map((keyValue) => {
-                return keyValue.get('key') + '=' + (keyValue.get('value') || '')
+                return encodeURI(keyValue.get('key') || '') +
+                    '=' +
+                    encodeURI(keyValue.get('value') || '')
             }).join('&')
         }
         return _url
