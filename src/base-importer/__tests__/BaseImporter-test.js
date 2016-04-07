@@ -250,9 +250,11 @@ export class TestBaseImporter extends UnitTest {
         const importer = new BaseImporter()
 
         const requestMock = new PawRequestMock(null, '')
-        const auth = new Auth.Basic()
+        const auths = new Immutable.List([
+            new Auth.Basic()
+        ])
 
-        importer._setAuth(requestMock, auth)
+        importer._setAuth(requestMock, auths)
 
         this.assertTrue(requestMock.spy.setHeader.count === 1)
         this.__compareDynamicValuesInDynamicStrings(
@@ -274,12 +276,14 @@ export class TestBaseImporter extends UnitTest {
         const importer = new BaseImporter()
 
         const requestMock = new PawRequestMock(null, '')
-        const auth = new Auth.Basic({
-            username: 'luckymarmot',
-            password: 'stub'
-        })
+        const auths = new Immutable.List([
+            new Auth.Basic({
+                username: 'luckymarmot',
+                password: 'stub'
+            })
+        ])
 
-        importer._setAuth(requestMock, auth)
+        importer._setAuth(requestMock, auths)
 
         this.assertTrue(requestMock.spy.setHeader.count === 1)
         this.__compareDynamicValuesInDynamicStrings(
@@ -301,7 +305,9 @@ export class TestBaseImporter extends UnitTest {
         const importer = new BaseImporter()
 
         const requestMock = new PawRequestMock(null, '')
-        const auth = new Auth.OAuth2()
+        const auth = new Immutable.List([
+            new Auth.OAuth2()
+        ])
 
         importer._setAuth(requestMock, auth)
 
@@ -327,11 +333,13 @@ export class TestBaseImporter extends UnitTest {
         const importer = new BaseImporter()
 
         const requestMock = new PawRequestMock(null, '')
-        const auth = new Auth.OAuth2({
-            flow: 'implicit',
-            authorizationUrl: 'auth.luckymarmot.com/oauth2',
-            tokenUrl: 'token.luckymarmot.com/oauth2'
-        })
+        const auth = new Immutable.List([
+            new Auth.OAuth2({
+                flow: 'implicit',
+                authorizationUrl: 'auth.luckymarmot.com/oauth2',
+                tokenUrl: 'token.luckymarmot.com/oauth2'
+            })
+        ])
 
         importer._setAuth(requestMock, auth)
 
@@ -467,7 +475,9 @@ export class TestBaseImporter extends UnitTest {
         const requestMock = new PawRequestMock()
 
         mockedSchemaRef.spyOn('resolve', () => {
-            return 12
+            return {
+                toJS: () => { return 12 }
+            }
         })
         const result = importer._setSchemaBody(requestMock, mockedSchemaRef, {
             schema: true
@@ -476,10 +486,10 @@ export class TestBaseImporter extends UnitTest {
         this.assertEqual(mockedSchemaRef.spy.resolve.count, 1)
         this.assertEqual(
             mockedSchemaRef.spy.resolve.calls,
-            [ [ { schema: true } ] ]
+            [ [ 1, { schema: true } ] ]
         )
 
-        this.assertEqual(result.description, 12)
+        this.assertEqual(result.description, '### Schema ###\n\n12')
     }
 
     testSetUrlEncodedBody() {
@@ -713,7 +723,13 @@ export class TestBaseImporter extends UnitTest {
 
         importer._importPawRequest.apply(
             mockedImporter,
-            [ contextMock, null, request, { schema: true } ]
+            [
+                contextMock,
+                null,
+                { appendChild: () => {} },
+                request,
+                { schema: true }
+            ]
         )
 
         this.assertEqual(mockedImporter.spy._createPawRequest.count, 1)
@@ -754,7 +770,7 @@ export class TestBaseImporter extends UnitTest {
 
         this.assertEqual(mockedImporter.spy._importPawRequests.count, 1)
         this.assertEqual(mockedImporter.spy._importPawRequests.calls,
-            [ [ contextMock, reqContext, null ] ]
+            [ [ contextMock, reqContext, null, null ] ]
         )
     }
 
