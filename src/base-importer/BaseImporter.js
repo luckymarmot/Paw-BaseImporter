@@ -80,11 +80,34 @@ export default class BaseImporter {
     }
 
     _createPawRequest(context, request) {
+        let url = this._generateUrl(
+            request.get('url'),
+            request.get('queries') || []
+        )
+        url = this._setAuthInUrl(
+            url,
+            request.get('auth') || [],
+            request.get('queries') || []
+        )
         return context.createRequest(
             request.get('name'),
             request.get('method'),
-            this._toDynamicString(request.get('url'), true, true),
+            this._toDynamicString(
+                url,
+                true,
+                true
+            ),
         )
+    }
+
+    _generateUrl(url, queries) {
+        let _url = url
+        if (queries && queries.length > 0) {
+            _url += '?' + queries.map((keyValue) => {
+                return keyValue.get('key') + '=' + (keyValue.get('value') || '')
+            }).join('&')
+        }
+        return _url
     }
 
     _setHeaders(pawReq, headers) {
@@ -97,11 +120,33 @@ export default class BaseImporter {
         return pawReq
     }
 
+    _setAuthInUrl(url, auths, queries) {
+        let _url = url
+        for (let auth of auths) {
+            if (auth instanceof Auth.ApiKey) {
+                if (auth.get('in') === 'query') {
+                    let urlPart = ''
+                    if (!queries || queries.length <= 0) {
+                        urlPart += '?'
+                    }
+                    else {
+                        urlPart += '&'
+                    }
+                    _url = _url + urlPart +
+                        encodeURI(auth.get('name') || '') +
+                        '=' +
+                        encodeURI(auth.get('name') || '')
+                }
+            }
+        }
+        return _url
+    }
+
     /*
         TODO: Add OAuth1 support when API-flow will support it
     */
-    _setAuth(pawReq, auth) {
-        if (auth) {
+    _setAuth(pawReq, auths, queries) {
+        for (let auth of auths) {
             if (auth instanceof Auth.Basic) {
                 const dv = new DynamicValue(
                     'com.luckymarmot.BasicAuthDynamicValue',
@@ -113,16 +158,29 @@ export default class BaseImporter {
                 pawReq.setHeader('Authorization', new DynamicString(dv))
             }
             else if (auth instanceof Auth.OAuth2) {
+                const grantMap = {
+                    accessCode: 0,
+                    implicit: 1,
+                    application: 2,
+                    password: 3
+                }
                 const dv = new DynamicValue(
                     'com.luckymarmot.OAuth2DynamicValue',
                     {
-                        grant_clitype: auth.get('flow', ''),
-                        authorization_uri: auth.get('authorizationUrl', ''),
-                        access_token_uri: auth.get('tokenUrl', ''),
+                        grantType: grantMap[auth.get('flow')] || 0,
+                        authorizationUrl: auth.get('authorizationUrl') || '',
+                        accessTokenUrl: auth.get('tokenUrl') || '',
                         scope: (auth.get('scopes') || []).join(' ')
                     }
                 )
                 pawReq.setHeader('Authorization', new DynamicString(dv))
+            }
+            else if (auth instanceof Auth.ApiKey) {
+                if (auth.get('in') === 'header') {
+                    pawReq.setHeader('Authorization',
+                        auth.get('name') + '=' + auth.get('key')
+                    )
+                }
             }
             else {
                 /* eslint-disable no-console */
@@ -171,9 +229,12 @@ export default class BaseImporter {
 
     _setSchemaBody(pawReq, body, schema) {
         let _pawReq = pawReq
-        if (!_pawReq.description) {
-            _pawReq.description = body.resolve(schema)
-        }
+        _pawReq.description = (
+            _pawReq.description ? _pawReq.description + '\n\n' : ''
+        ) + '### Schema ###\n\n' +
+        JSON.stringify(
+            body.resolve(1, schema).toJS(), null, '  '
+        )
         return _pawReq
     }
 
@@ -198,14 +259,15 @@ export default class BaseImporter {
 
     _setBody(pawReq, bodyType, body, schema) {
         const bodyRules = {
-            formData: this._setFormDataBody,
-            urlEncoded: this._setUrlEncodedBody,
-            json: this._setJSONBody,
-            plain: this._setPlainBody,
-            file: this._setPlainBody,
+            formData: ::this._setFormDataBody,
+            urlEncoded: ::this._setUrlEncodedBody,
+            json: ::this._setJSONBody,
+            plain: ::this._setPlainBody,
+            file: ::this._setPlainBody,
             schema: (_pawReq, _body) => {
-                return this._setSchemaBody(_pawReq, _body, schema)
-            }
+                return ::this._setSchemaBody(_pawReq, _body, schema)
+            },
+            null: (_pawReq) => { return _pawReq }
         }
 
         let _pawReq = pawReq
@@ -227,9 +289,10 @@ export default class BaseImporter {
         return _pawReq
     }
 
-    _importPawRequest(context, options, request, schema) {
+    _importPawRequest(context, options, parent, request, schema) {
         const headers = request.get('headers')
         const auth = request.get('auth')
+        const queries = request.get('queries')
         const bodyType = request.get('bodyType')
         const body = request.get('body')
         const timeout = request.get('timeout')
@@ -243,7 +306,7 @@ export default class BaseImporter {
         pawRequest = this._setHeaders(pawRequest, headers)
 
         // auth
-        pawRequest = this._setAuth(pawRequest, auth)
+        pawRequest = this._setAuth(pawRequest, auth, queries)
 
         // body
         pawRequest = this._setBody(
@@ -258,10 +321,7 @@ export default class BaseImporter {
             pawRequest.timeout = timeout * 1000
         }
 
-        // parent
-        if (options && options.parent) {
-            pawRequest.parent = options.parent
-        }
+        parent.appendChild(pawRequest)
 
         // order
         if (options && options.order) {
@@ -271,26 +331,77 @@ export default class BaseImporter {
         return pawRequest
     }
 
-    _importPawRequests(context, requestContext, options) {
+    _importPawRequests(context, requestContext, item, options) {
         const group = requestContext.get('group')
         const schema = requestContext.get('schema')
+
+        let parent
+        let name
+        if (group.get('name')) {
+            name = group.get('name')
+        }
+        else if (item && item.file) {
+            name = item.file.name
+        }
+        else if (item && item.url) {
+            name = item.url
+        }
+        parent = context.createRequestGroup(name)
+
+        if (options && options.parent) {
+            options.parent.appendChild(parent)
+        }
+
+        if (
+            options &&
+            options.order !== null &&
+            typeof options.order !== 'undefined'
+        ) {
+            parent.order = options.order
+        }
+
         this._applyFuncOverGroupTree(
             group,
-            (request) => {
-                this._importPawRequest(context, options, request, schema)
-            }
+            (request, requestParent) => {
+                ::this._importPawRequest(
+                    context,
+                    options,
+                    requestParent,
+                    request,
+                    schema
+                )
+            },
+            (current, parentGroup) => {
+                if (current === parentGroup.name) {
+                    return parentGroup
+                }
+                let pawGroup = context.createRequestGroup(current)
+                parentGroup.appendChild(pawGroup)
+                return pawGroup
+            },
+            parent
         )
     }
 
-    _applyFuncOverGroupTree(group, func) {
+    _applyFuncOverGroupTree(group, leafFunc, nodeFunc, pawGroup, depth = 0) {
         let calls = []
+        // let _path = depth < 2 ? '' : pawGroup.name
+        // _path = _path + (group.get('name') || '')
+
+        let currentPawGroup = nodeFunc(group.get('name') || '', pawGroup)
         group.get('children').forEach((child) => {
             if (child instanceof Request) {
-                calls.push(func(child))
+                calls.push(leafFunc(child, currentPawGroup))
             }
             else {
                 calls = calls.concat(
-                    this._applyFuncOverGroupTree(child, func)
+                    this._applyFuncOverGroupTree(
+                        child,
+                        leafFunc,
+                        nodeFunc,
+                        currentPawGroup,
+                        depth + 1
+                    )
                 )
             }
         })
@@ -347,10 +458,12 @@ export default class BaseImporter {
                     'did not return an instance of RequestContext'
                 )
             }
-            this._importPawRequests(context, requestContext, options)
+            this._importPawRequests(context, requestContext, item, options)
             if (options && options.order) {
                 options.order += 1
             }
         }
+
+        return true
     }
 }

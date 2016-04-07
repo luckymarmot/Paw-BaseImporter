@@ -467,7 +467,9 @@ export class TestBaseImporter extends UnitTest {
         const requestMock = new PawRequestMock()
 
         mockedSchemaRef.spyOn('resolve', () => {
-            return 12
+            return {
+                toJS: () => { return 12 }
+            }
         })
         const result = importer._setSchemaBody(requestMock, mockedSchemaRef, {
             schema: true
@@ -476,10 +478,10 @@ export class TestBaseImporter extends UnitTest {
         this.assertEqual(mockedSchemaRef.spy.resolve.count, 1)
         this.assertEqual(
             mockedSchemaRef.spy.resolve.calls,
-            [ [ { schema: true } ] ]
+            [ [ 1, { schema: true } ] ]
         )
 
-        this.assertEqual(result.description, 12)
+        this.assertEqual(result.description, '12')
     }
 
     testSetUrlEncodedBody() {
@@ -713,7 +715,13 @@ export class TestBaseImporter extends UnitTest {
 
         importer._importPawRequest.apply(
             mockedImporter,
-            [ contextMock, null, request, { schema: true } ]
+            [
+                contextMock,
+                null,
+                { appendChild: () => {} },
+                request,
+                { schema: true }
+            ]
         )
 
         this.assertEqual(mockedImporter.spy._createPawRequest.count, 1)
@@ -754,7 +762,7 @@ export class TestBaseImporter extends UnitTest {
 
         this.assertEqual(mockedImporter.spy._importPawRequests.count, 1)
         this.assertEqual(mockedImporter.spy._importPawRequests.calls,
-            [ [ contextMock, reqContext, null ] ]
+            [ [ contextMock, reqContext, null, null ] ]
         )
     }
 

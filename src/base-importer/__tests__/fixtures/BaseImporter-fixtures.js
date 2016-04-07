@@ -7,7 +7,11 @@ export default class BaseImporterFixtures {
             {
                 name: 'SimpleTest',
                 inputs: [
-                    new Group()
+                    new Group(),
+                    null,
+                    (currentName, parent) => {
+                        return parent
+                    }
                 ],
                 output: []
             },
@@ -26,6 +30,9 @@ export default class BaseImporterFixtures {
                     }),
                     (arg) => {
                         return arg.get('name') * arg.get('name')
+                    },
+                    (currentName, parent) => {
+                        return parent
                     }
                 ],
                 output: [ 1, 4 ]
@@ -49,6 +56,9 @@ export default class BaseImporterFixtures {
                     }),
                     (arg) => {
                         return arg.get('name') * arg.get('name')
+                    },
+                    (currentName, parent) => {
+                        return parent
                     }
                 ],
                 output: [ 1, 4 ]
