@@ -334,7 +334,7 @@ export class TestBaseImporter extends UnitTest {
 
         const requestMock = new PawRequestMock(null, '')
         const auth = new Immutable.List([
-                new Auth.OAuth2({
+            new Auth.OAuth2({
                 flow: 'implicit',
                 authorizationUrl: 'auth.luckymarmot.com/oauth2',
                 tokenUrl: 'token.luckymarmot.com/oauth2'
