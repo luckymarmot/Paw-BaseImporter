@@ -2,7 +2,8 @@ import RequestContext, {
     FileReference,
     Auth,
     Request,
-    KeyValue
+    KeyValue,
+    EnvironmentReference
 } from 'api-flow'
 
 import {
@@ -11,6 +12,10 @@ import {
 } from '../paw-mocks/PawShims'
 
 export default class BaseImporter {
+    constructor() {
+        this.ENVIRONMENT_DOMAIN_NAME = 'Imported Environments'
+        this.context = null
+    }
 
     _resolveFileReference(value) {
         if (value instanceof FileReference) {
@@ -64,40 +69,54 @@ export default class BaseImporter {
         // resolve file references
         if (resolveFileRefs) {
             const resolvedString = this._resolveFileReference(string)
-            if (typeof resolvedString !== 'string') {
+            if (resolvedString instanceof DynamicString) {
                 return resolvedString
             }
         }
 
-        // split around special characters
-        const re = /([^\x00-\x1f]+)|([\x00-\x1f]+)/gm
+        let envComponents = []
+        if (string instanceof EnvironmentReference) {
+            envComponents = this._castReferenceToDynamicString(
+                string
+            ).components
+        }
+        else {
+            envComponents.push(string)
+        }
+
         let components = []
-        let m
-        while ((m = re.exec(string)) !== null) {
-            if (m[1]) {
-                components.push(m[1])
+        for (let component of envComponents) {
+            if (typeof component !== 'string') {
+                components.push(component)
             }
             else {
-                components.push(this._escapeSequenceDynamicValue(m[2]))
+                // split around special characters
+                const re = /([^\x00-\x1f]+)|([\x00-\x1f]+)/gm
+                let m
+                while ((m = re.exec(component)) !== null) {
+                    if (m[1]) {
+                        components.push(m[1])
+                    }
+                    else {
+                        components.push(this._escapeSequenceDynamicValue(m[2]))
+                    }
+                }
             }
         }
+
         return new DynamicString(...components)
     }
 
-    _createPawRequest(context, request) {
+    _createPawRequest(request) {
         let url = ::this._generateUrl(
             request.get('url'),
             request.get('queries'),
             request.get('auth')
         )
-        return context.createRequest(
+        return this.context.createRequest(
             request.get('name'),
             request.get('method'),
-            this._toDynamicString(
-                url,
-                true,
-                true
-            ),
+            url,
         )
     }
 
@@ -113,20 +132,80 @@ export default class BaseImporter {
     }
 
     _generateUrl(url, queries, auths) {
-        let _url = url
+        let _url = this._toDynamicString(url, true, true)
 
         let queryParams = (queries || []).concat(
             this._extractQueryParamsFromAuth(auths)
         )
-
         if (queryParams.length > 0) {
-            _url += '?' + queryParams.map((keyValue) => {
-                return encodeURI(keyValue.get('key') || '') +
-                    '=' +
-                    encodeURI(keyValue.get('value') || '')
-            }).join('&')
+            _url.appendString('?')
+            let _params = queryParams.reduce(
+                (params, keyValue) => {
+                    let dynKey = this._toDynamicString(
+                        keyValue.get('key'), true, true
+                    ).components.map((component) => {
+                        if (typeof component === 'string') {
+                            return encodeURI(component)
+                        }
+                        return component
+                    })
+                    let dynValue = this._toDynamicString(
+                        keyValue.get('value'), true, true
+                    ).components.map((component) => {
+                        if (typeof component === 'string') {
+                            return encodeURI(component)
+                        }
+                        return component
+                    })
+                    let param = []
+                    if (params !== []) {
+                        param.push('&')
+                    }
+                    param = param.concat(dynKey)
+                    param.push('=')
+                    param = param.concat(dynValue)
+                    return params.concat(param)
+                },
+                []
+            )
+            _url = new DynamicString(..._url.components, ..._params)
         }
+
         return _url
+    }
+
+    _castReferenceToDynamicString(reference) {
+        let components = reference.get('referenceName')
+        let dynStr = []
+
+        components.forEach((component) => {
+            let value = this._extractReferenceComponent(component)
+            if (value) {
+                dynStr.push(value)
+            }
+        })
+        return new DynamicString(...dynStr)
+    }
+
+    _extractReferenceComponent(component) {
+        if (typeof component === 'string') {
+            return component
+        }
+
+        if (component instanceof EnvironmentReference &&
+            component.get('referenceName').size === 1 &&
+            typeof component.getIn([ 'referenceName', 0 ]) === 'string'
+        ) {
+            let envVariable = this._getEnvironmentVariable(
+                component.getIn([ 'referenceName', 0 ])
+            )
+            return new DynamicValue(
+                'com.luckymarmot.EnvironmentVariableDynamicValue',
+                {
+                    environmentVariable: envVariable.id
+                }
+            )
+        }
     }
 
     _setHeaders(pawReq, headers) {
@@ -139,17 +218,14 @@ export default class BaseImporter {
         return pawReq
     }
 
-    /*
-        TODO: Add OAuth1 support when API-flow will support it
-    */
     _setAuth(pawReq, auths) {
         for (let auth of auths) {
             if (auth instanceof Auth.Basic) {
                 const dv = new DynamicValue(
                     'com.luckymarmot.BasicAuthDynamicValue',
                     {
-                        username: auth.get('username', ''),
-                        password: auth.get('password', '')
+                        username: auth.get('username') || '',
+                        password: auth.get('password') || ''
                     }
                 )
                 pawReq.setHeader('Authorization', new DynamicString(dv))
@@ -158,8 +234,26 @@ export default class BaseImporter {
                 const dv = new DynamicValue(
                     'com.luckymarmot.PawExtensions.DigestAuthDynamicValue',
                     {
-                        username: auth.get('username', ''),
-                        password: auth.get('password', '')
+                        username: auth.get('username'),
+                        password: auth.get('password')
+                    }
+                )
+                pawReq.setHeader('Authorization', new DynamicString(dv))
+            }
+            else if (auth instanceof Auth.OAuth1) {
+                const dv = new DynamicValue(
+                    'com.luckymarmot.OAuth1HeaderDynamicValue',
+                    {
+                        callback: auth.get('callback') || '',
+                        consumerKey: auth.get('consumerKey') || '',
+                        consumerSecret: auth.get('consumerSecret') || '',
+                        tokenSecret: auth.get('tokenSecret') || '',
+                        algorithm: auth.get('algorithm') || '',
+                        nonce: auth.get('nonce') || '',
+                        additionalParamaters: auth
+                            .get('additionalParamaters') || '',
+                        timestamp: auth.get('timestamp') || '',
+                        token: auth.get('token') || ''
                     }
                 )
                 pawReq.setHeader('Authorization', new DynamicString(dv))
@@ -182,6 +276,29 @@ export default class BaseImporter {
                 )
                 pawReq.setHeader('Authorization', new DynamicString(dv))
             }
+            else if (auth instanceof Auth.AWSSig4) {
+                const dv = new DynamicValue(
+                    'com.shigeoka.PawExtensions.AWSSignature4DynamicValue',
+                    {
+                        key: auth.get('key') || '',
+                        secret: auth.get('secret') || '',
+                        region: auth.get('region') || '',
+                        service: auth.get('service') || ''
+                    }
+                )
+                pawReq.setHeader('Authorization', new DynamicString(dv))
+            }
+            else if (auth instanceof Auth.Hawk) {
+                const dv = new DynamicValue(
+                    'uk.co.jalada.PawExtensions.HawkDynamicValue',
+                    {
+                        key: auth.get('key') || '',
+                        id: auth.get('id') || '',
+                        algorithm: auth.get('algorithm') || ''
+                    }
+                )
+                pawReq.setHeader('Authorization', new DynamicString(dv))
+            }
             else if (auth instanceof Auth.ApiKey) {
                 if (auth.get('in') === 'header') {
                     pawReq.setHeader('Authorization',
@@ -193,7 +310,7 @@ export default class BaseImporter {
                 /* eslint-disable no-console */
                 console.error(
                     'Auth type ' +
-                    auth.get('type') +
+                    auth.constructor.name +
                     ' is not supported in Paw'
                 )
                 /* eslint-enable no-console */
@@ -222,7 +339,7 @@ export default class BaseImporter {
 
     _setPlainBody(pawReq, body) {
         pawReq.body = this._toDynamicString(
-            body, true, true
+            body || '', true, true
         )
 
         return pawReq
@@ -296,7 +413,7 @@ export default class BaseImporter {
         return _pawReq
     }
 
-    _importPawRequest(context, options, parent, request, schema) {
+    _importPawRequest(options, parent, request, schema) {
         const headers = request.get('headers')
         const auth = request.get('auth')
         const bodyType = request.get('bodyType')
@@ -304,7 +421,7 @@ export default class BaseImporter {
         const timeout = request.get('timeout')
 
         // url + method
-        let pawRequest = this._createPawRequest(context, request)
+        let pawRequest = this._createPawRequest(request)
 
         pawRequest.description = request.get('description')
 
@@ -337,9 +454,71 @@ export default class BaseImporter {
         return pawRequest
     }
 
-    _importPawRequests(context, requestContext, item, options) {
+    _importEnvironments(environments) {
+        const domainName = this.ENVIRONMENT_DOMAIN_NAME
+        let environmentDomain = this.context
+            .getEnvironmentDomainByName(domainName)
+
+        if (!environmentDomain) {
+            environmentDomain = this.context.createEnvironmentDomain(domainName)
+        }
+
+        for (let env of environments) {
+            let pawEnv = environmentDomain.createEnvironment(env.name)
+            let variablesDict = {}
+            env.get('variables').forEach(
+                value => {
+                    variablesDict[value.get('key')] = value.get('value')
+                }
+            )
+            pawEnv.setVariablesValues(variablesDict)
+        }
+    }
+
+    _getEnvironmentDomain() {
+        let env = this.context.getEnvironmentDomainByName(
+            this.ENVIRONMENT_DOMAIN_NAME
+        )
+        if (typeof env === 'undefined') {
+            env = this.context
+                .createEnvironmentDomain(this.ENVIRONMENT_DOMAIN_NAME)
+        }
+        return env
+    }
+
+    _getEnvironment(domain) {
+        let env = domain.getEnvironmentByName('Default Environment')
+        if (typeof env === 'undefined') {
+            env = domain.createEnvironment('Default Environment')
+        }
+        return env
+    }
+
+    _getEnvironmentVariable(name) {
+        let domain = this._getEnvironmentDomain()
+        let variable = domain.getVariableByName(name)
+        if (typeof variable === 'undefined') {
+            let env = this._getEnvironment(domain)
+            let varD = {}
+            varD[name] = ''
+            env.setVariablesValues(varD)
+            variable = domain.getVariableByName(name)
+        }
+        return variable
+    }
+
+    _importPawRequests(requestContext, item, options) {
         const group = requestContext.get('group')
         const schema = requestContext.get('schema')
+        const environments = requestContext.get('environments')
+
+        if (environments && environments.size > 0) {
+            this._importEnvironments(environments)
+        }
+
+        if (group.get('children').size === 0) {
+            return
+        }
 
         let parent
         let name
@@ -352,7 +531,8 @@ export default class BaseImporter {
         else if (item && item.url) {
             name = item.url
         }
-        parent = context.createRequestGroup(name)
+
+        parent = this.context.createRequestGroup(name)
 
         if (options && options.parent) {
             options.parent.appendChild(parent)
@@ -366,25 +546,26 @@ export default class BaseImporter {
             parent.order = options.order
         }
 
+        let manageRequestGroups = (current, parentGroup) => {
+            if (current === parentGroup.name || current === '') {
+                return parentGroup
+            }
+            let pawGroup = this.context.createRequestGroup(current)
+            parentGroup.appendChild(pawGroup)
+            return pawGroup
+        }
+
         this._applyFuncOverGroupTree(
             group,
             (request, requestParent) => {
                 ::this._importPawRequest(
-                    context,
                     options,
                     requestParent,
                     request,
                     schema
                 )
             },
-            (current, parentGroup) => {
-                if (current === parentGroup.name) {
-                    return parentGroup
-                }
-                let pawGroup = context.createRequestGroup(current)
-                parentGroup.appendChild(pawGroup)
-                return pawGroup
-            },
+            manageRequestGroups,
             parent
         )
     }
@@ -437,12 +618,13 @@ export default class BaseImporter {
                 'did not return an instance of RequestContext'
             )
         }
-        this._importPawRequests(context, requestContext)
+        this._importPawRequests(requestContext)
         return true
     }
 
     /*
       @params:
+        - requestContexts
         - context
         - items
         - options
@@ -452,19 +634,32 @@ export default class BaseImporter {
     }
 
     import(context, items, options) {
+        let requestContexts = []
         for (let item of items) {
-            const requestContext = this.createRequestContext(
+            requestContexts = this.createRequestContext(
+                requestContexts,
                 context,
                 item,
                 options
             )
+        }
+
+        this.context = context
+
+        for (let env of requestContexts) {
+            let requestContext = env.context
+
             if (!(requestContext instanceof RequestContext)) {
                 throw new Error(
                     'createRequestContext ' +
                     'did not return an instance of RequestContext'
                 )
             }
-            this._importPawRequests(context, requestContext, item, options)
+            this._importPawRequests(
+                requestContext,
+                env.items[0],
+                options
+            )
             if (options && options.order) {
                 options.order += 1
             }
