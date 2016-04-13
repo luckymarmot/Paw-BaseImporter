@@ -178,7 +178,7 @@ export default class BaseImporter {
         }
     }
 
-    // @not tested
+    // @tested
     _getEnvironmentDomain() {
         let env = this.context.getEnvironmentDomainByName(
             this.ENVIRONMENT_DOMAIN_NAME
@@ -190,16 +190,16 @@ export default class BaseImporter {
         return env
     }
 
-    // @not tested
-    _getEnvironment(domain) {
-        let env = domain.getEnvironmentByName('Default Environment')
+    // @tested
+    _getEnvironment(domain, environmentName = 'Default Environment') {
+        let env = domain.getEnvironmentByName(environmentName)
         if (typeof env === 'undefined') {
-            env = domain.createEnvironment('Default Environment')
+            env = domain.createEnvironment(environmentName)
         }
         return env
     }
 
-    // @not tested
+    // @tested
     _getEnvironmentVariable(name) {
         let domain = this._getEnvironmentDomain()
         let variable = domain.getVariableByName(name)
@@ -230,7 +230,7 @@ export default class BaseImporter {
         pawRequest = this._setHeaders(pawRequest, headers)
 
         // auth
-        pawRequest = this._setAuth(pawRequest, auth)
+        pawRequest = ::this._setAuth(pawRequest, auth)
 
         // body
         pawRequest = this._setBody(
@@ -281,7 +281,7 @@ export default class BaseImporter {
         return calls
     }
 
-    // @tested 30%
+    // @tested
     _createPawRequest(request) {
         let url = ::this._generateUrl(
             request.get('url'),
@@ -295,14 +295,14 @@ export default class BaseImporter {
         )
     }
 
-    // @not tested
+    // @tested 70% (encodeURI behavior not tested)
     _generateUrl(url, queries, auths) {
         let _url = this._toDynamicString(url, true, true)
 
         let queryParams = (queries || []).concat(
             this._extractQueryParamsFromAuth(auths)
         )
-        if (queryParams.length > 0) {
+        if (queryParams.size > 0) {
             _url.appendString('?')
             let _params = queryParams.reduce(
                 (params, keyValue) => {
@@ -323,7 +323,7 @@ export default class BaseImporter {
                         return component
                     })
                     let param = []
-                    if (params !== []) {
+                    if (params.length !== 0) {
                         param.push('&')
                     }
                     param = param.concat(dynKey)
@@ -339,14 +339,14 @@ export default class BaseImporter {
         return _url
     }
 
-    // @not tested
+    // @tested
     _extractQueryParamsFromAuth(auths) {
         return (auths || []).filter((auth) => {
             return auth instanceof Auth.ApiKey && auth.get('in') === 'query'
         }).map((auth) => {
             return new KeyValue({
                 key: auth.get('name'),
-                value: auth.get('name')
+                value: auth.get('key')
             })
         }).toArray()
     }
@@ -362,92 +362,114 @@ export default class BaseImporter {
         return pawReq
     }
 
-    // @tested 30%
+    // @tested
+    _setBasicAuth(auth) {
+        return new DynamicValue(
+            'com.luckymarmot.BasicAuthDynamicValue',
+            {
+                username: auth.get('username') || '',
+                password: auth.get('password') || ''
+            }
+        )
+    }
+
+    // @tested
+    _setDigestAuth(auth) {
+        return new DynamicValue(
+            'com.luckymarmot.PawExtensions.DigestAuthDynamicValue',
+            {
+                username: auth.get('username'),
+                password: auth.get('password')
+            }
+        )
+    }
+
+    // @tested
+    _setOAuth1Auth(auth) {
+        return new DynamicValue(
+            'com.luckymarmot.OAuth1HeaderDynamicValue',
+            {
+                callback: auth.get('callback') || '',
+                consumerKey: auth.get('consumerKey') || '',
+                consumerSecret: auth.get('consumerSecret') || '',
+                tokenSecret: auth.get('tokenSecret') || '',
+                algorithm: auth.get('algorithm') || '',
+                nonce: auth.get('nonce') || '',
+                additionalParamaters: auth
+                    .get('additionalParamaters') || '',
+                timestamp: auth.get('timestamp') || '',
+                token: auth.get('token') || ''
+            }
+        )
+    }
+
+    // @tested
+    _setOAuth2Auth(auth) {
+        const grantMap = {
+            accessCode: 0,
+            implicit: 1,
+            application: 2,
+            password: 3
+        }
+        return new DynamicValue(
+            'com.luckymarmot.OAuth2DynamicValue',
+            {
+                grantType: grantMap[auth.get('flow')] || 0,
+                authorizationUrl: auth.get('authorizationUrl') || '',
+                accessTokenUrl: auth.get('tokenUrl') || '',
+                scope: (auth.get('scopes') || []).join(' ')
+            }
+        )
+    }
+
+    // @tested
+    _setAWSSig4Auth(auth) {
+        return new DynamicValue(
+            'com.shigeoka.PawExtensions.AWSSignature4DynamicValue',
+            {
+                key: auth.get('key') || '',
+                secret: auth.get('secret') || '',
+                region: auth.get('region') || '',
+                service: auth.get('service') || ''
+            }
+        )
+    }
+
+    // @tested
+    _setHawkAuth(auth) {
+        return new DynamicValue(
+            'uk.co.jalada.PawExtensions.HawkDynamicValue',
+            {
+                key: auth.get('key') || '',
+                id: auth.get('id') || '',
+                algorithm: auth.get('algorithm') || ''
+            }
+        )
+    }
+
+    // @tested
     _setAuth(pawReq, auths) {
+        const authTypeMap = {
+            BasicAuth: this._setBasicAuth,
+            DigestAuth: this._setDigestAuth,
+            OAuth1Auth: this._setOAuth1Auth,
+            OAuth2Auth: this._setOAuth2Auth,
+            AWSSig4Auth: this._setAWSSig4Auth,
+            HawkAuth: this._setHawkAuth
+        }
+
         for (let auth of auths) {
-            if (auth instanceof Auth.Basic) {
-                const dv = new DynamicValue(
-                    'com.luckymarmot.BasicAuthDynamicValue',
-                    {
-                        username: auth.get('username') || '',
-                        password: auth.get('password') || ''
-                    }
-                )
-                pawReq.setHeader('Authorization', new DynamicString(dv))
-            }
-            else if (auth instanceof Auth.Digest) {
-                const dv = new DynamicValue(
-                    'com.luckymarmot.PawExtensions.DigestAuthDynamicValue',
-                    {
-                        username: auth.get('username'),
-                        password: auth.get('password')
-                    }
-                )
-                pawReq.setHeader('Authorization', new DynamicString(dv))
-            }
-            else if (auth instanceof Auth.OAuth1) {
-                const dv = new DynamicValue(
-                    'com.luckymarmot.OAuth1HeaderDynamicValue',
-                    {
-                        callback: auth.get('callback') || '',
-                        consumerKey: auth.get('consumerKey') || '',
-                        consumerSecret: auth.get('consumerSecret') || '',
-                        tokenSecret: auth.get('tokenSecret') || '',
-                        algorithm: auth.get('algorithm') || '',
-                        nonce: auth.get('nonce') || '',
-                        additionalParamaters: auth
-                            .get('additionalParamaters') || '',
-                        timestamp: auth.get('timestamp') || '',
-                        token: auth.get('token') || ''
-                    }
-                )
-                pawReq.setHeader('Authorization', new DynamicString(dv))
-            }
-            else if (auth instanceof Auth.OAuth2) {
-                const grantMap = {
-                    accessCode: 0,
-                    implicit: 1,
-                    application: 2,
-                    password: 3
-                }
-                const dv = new DynamicValue(
-                    'com.luckymarmot.OAuth2DynamicValue',
-                    {
-                        grantType: grantMap[auth.get('flow')] || 0,
-                        authorizationUrl: auth.get('authorizationUrl') || '',
-                        accessTokenUrl: auth.get('tokenUrl') || '',
-                        scope: (auth.get('scopes') || []).join(' ')
-                    }
-                )
-                pawReq.setHeader('Authorization', new DynamicString(dv))
-            }
-            else if (auth instanceof Auth.AWSSig4) {
-                const dv = new DynamicValue(
-                    'com.shigeoka.PawExtensions.AWSSignature4DynamicValue',
-                    {
-                        key: auth.get('key') || '',
-                        secret: auth.get('secret') || '',
-                        region: auth.get('region') || '',
-                        service: auth.get('service') || ''
-                    }
-                )
-                pawReq.setHeader('Authorization', new DynamicString(dv))
-            }
-            else if (auth instanceof Auth.Hawk) {
-                const dv = new DynamicValue(
-                    'uk.co.jalada.PawExtensions.HawkDynamicValue',
-                    {
-                        key: auth.get('key') || '',
-                        id: auth.get('id') || '',
-                        algorithm: auth.get('algorithm') || ''
-                    }
-                )
+            let rule = authTypeMap[auth.constructor.name]
+
+            if (rule) {
+                const dv = rule(auth)
                 pawReq.setHeader('Authorization', new DynamicString(dv))
             }
             else if (auth instanceof Auth.ApiKey) {
                 if (auth.get('in') === 'header') {
-                    pawReq.setHeader('Authorization',
-                        auth.get('name') + '=' + auth.get('key')
+                    pawReq.setHeader(
+                        this._toDynamicString(auth.get('name'), true, true),
+                        this._toDynamicString(auth.get('key'), true, true)
                     )
                 }
             }
@@ -564,7 +586,7 @@ export default class BaseImporter {
         return pawReq
     }
 
-    // @tested 90%
+    // @tested
     _toDynamicString(string, defaultToEmpty, resolveFileRefs) {
         if (!string) {
             if (defaultToEmpty) {

@@ -15,7 +15,8 @@ import {
     DynamicValue,
     PawContextMock,
     PawRequestMock,
-    ClassMock
+    ClassMock,
+    Mock
 } from '../../paw-mocks/PawMocks'
 
 import BaseImporter from '../BaseImporter'
@@ -417,6 +418,242 @@ export class TestBaseImporter extends UnitTest {
         this.assertEqual(expected.components, result.components)
     }
 
+    testGetEnvironmentDomainNoDomainFound() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const contextMock = new PawContextMock(null, '')
+
+        contextMock.spyOn('getEnvironmentDomainByName', () => {})
+        contextMock.spyOn('createEnvironmentDomain', () => {
+            return 12
+        })
+        mockedImporter.context = contextMock
+        mockedImporter.ENVIRONMENT_DOMAIN_NAME = 'Mocked Environment'
+
+        const result = importer._getEnvironmentDomain.apply(
+            mockedImporter,
+            []
+        )
+
+        this.assertEqual(result, 12)
+        this.assertEqual(
+            contextMock.spy.getEnvironmentDomainByName.count, 1
+        )
+        this.assertEqual(
+            contextMock.spy.createEnvironmentDomain.count, 1
+        )
+
+        this.assertEqual(
+            contextMock.spy.getEnvironmentDomainByName.calls[0],
+            [ mockedImporter.ENVIRONMENT_DOMAIN_NAME ]
+        )
+        this.assertEqual(
+            contextMock.spy.createEnvironmentDomain.calls[0],
+            [ mockedImporter.ENVIRONMENT_DOMAIN_NAME ]
+        )
+    }
+
+    testGetEnvironmentDomainWithDomainFound() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const contextMock = new PawContextMock(null, '')
+
+        contextMock.spyOn('getEnvironmentDomainByName', () => {
+            return 12
+        })
+        contextMock.spyOn('createEnvironmentDomain', () => {
+            this.assertTrue(false)
+            return 42
+        })
+        mockedImporter.context = contextMock
+        mockedImporter.ENVIRONMENT_DOMAIN_NAME = 'Mocked Environment'
+
+        const result = importer._getEnvironmentDomain.apply(
+            mockedImporter,
+            []
+        )
+
+        this.assertEqual(result, 12)
+        this.assertEqual(
+            contextMock.spy.getEnvironmentDomainByName.count, 1
+        )
+        this.assertEqual(
+            contextMock.spy.createEnvironmentDomain.count, 0
+        )
+
+        this.assertEqual(
+            contextMock.spy.getEnvironmentDomainByName.calls[0],
+            [ mockedImporter.ENVIRONMENT_DOMAIN_NAME ]
+        )
+    }
+
+    testGetEnvironmentWithNoEnvironmentFound() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const domain = new Mock({
+            getEnvironmentByName: () => {},
+            createEnvironment: () => {}
+        }, '')
+
+        domain.spyOn('getEnvironmentByName', () => {
+            return
+        })
+
+        domain.spyOn('createEnvironment', () => {
+            return 12
+        })
+
+        const result = importer._getEnvironment.apply(
+            mockedImporter,
+            [ domain, 'Mock Environment' ]
+        )
+
+        this.assertEqual(result, 12)
+        this.assertEqual(
+            domain.spy.getEnvironmentByName.count, 1
+        )
+        this.assertEqual(
+            domain.spy.createEnvironment.count, 1
+        )
+
+        this.assertEqual(
+            domain.spy.getEnvironmentByName.calls[0],
+            [ 'Mock Environment' ]
+        )
+        this.assertEqual(
+            domain.spy.createEnvironment.calls[0],
+            [ 'Mock Environment' ]
+        )
+    }
+
+    testGetEnvironmentWithEnvironmentFound() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const domain = new Mock({
+            getEnvironmentByName: () => {},
+            createEnvironment: () => {}
+        }, '')
+
+        domain.spyOn('getEnvironmentByName', () => {
+            return 12
+        })
+
+        domain.spyOn('createEnvironment', () => {
+            this.assertTrue(false)
+            return 42
+        })
+
+        const result = importer._getEnvironment.apply(
+            mockedImporter,
+            [ domain, 'Mock Environment' ]
+        )
+
+        this.assertEqual(result, 12)
+        this.assertEqual(
+            domain.spy.getEnvironmentByName.count, 1
+        )
+        this.assertEqual(
+            domain.spy.createEnvironment.count, 0
+        )
+
+        this.assertEqual(
+            domain.spy.getEnvironmentByName.calls[0],
+            [ 'Mock Environment' ]
+        )
+    }
+
+    testGetEnvironmentVariableNoVariableFound() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        const domain = new Mock({
+            getVariableByName: () => {}
+        }, '')
+        const environment = new Mock({
+            setVariablesValues: () => {}
+        }, '')
+
+        mockedImporter.spyOn('_getEnvironmentDomain', () => {
+            return domain
+        })
+
+        let counter = -2
+        const returns = [ 'var' ]
+        domain.spyOn('getVariableByName', () => {
+            counter += 1
+            return returns[counter]
+        })
+
+        mockedImporter.spyOn('_getEnvironment', () => {
+            return environment
+        })
+
+        const result = importer._getEnvironmentVariable.apply(
+            mockedImporter,
+            [ 'varName' ]
+        )
+
+        this.assertEqual(result, 'var')
+        this.assertEqual(
+            mockedImporter.spy._getEnvironmentDomain.count, 1
+        )
+        this.assertEqual(
+            mockedImporter.spy._getEnvironment.count, 1
+        )
+        this.assertEqual(
+            domain.spy.getVariableByName.count, 2
+        )
+        this.assertEqual(
+            environment.spy.setVariablesValues.count, 1
+        )
+    }
+
+    testGetEnvironmentVariableWithVariableFound() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        const domain = new Mock({
+            getVariableByName: () => {}
+        }, '')
+        const environment = new Mock({
+            setVariablesValues: () => {}
+        }, '')
+
+        mockedImporter.spyOn('_getEnvironmentDomain', () => {
+            return domain
+        })
+
+        let counter = -1
+        const returns = [ 'var' ]
+        domain.spyOn('getVariableByName', () => {
+            counter += 1
+            return returns[counter]
+        })
+
+        mockedImporter.spyOn('_getEnvironment', () => {
+            return environment
+        })
+
+        const result = importer._getEnvironmentVariable.apply(
+            mockedImporter,
+            [ 'varName' ]
+        )
+
+        this.assertEqual(result, 'var')
+        this.assertEqual(
+            mockedImporter.spy._getEnvironmentDomain.count, 1
+        )
+        this.assertEqual(
+            mockedImporter.spy._getEnvironment.count, 0
+        )
+        this.assertEqual(
+            domain.spy.getVariableByName.count, 1
+        )
+        this.assertEqual(
+            environment.spy.setVariablesValues.count, 0
+        )
+    }
+
     testSimpleCreatePawRequest() {
         const importer = new BaseImporter()
 
@@ -460,6 +697,45 @@ export class TestBaseImporter extends UnitTest {
         this.assertEqual(
             contextMock.spy.createRequest.calls[0][2].components[0],
             'http://fakeurl.com'
+        )
+    }
+
+    testCreatePawRequest() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const contextMock = new PawContextMock(null, '')
+
+        mockedImporter.spyOn('_generateUrl', () => {
+            return 'dummyValue'
+        })
+        contextMock.spyOn('createRequest', () => {
+            return 12
+        })
+        mockedImporter.context = contextMock
+
+        const request = new Request()
+
+        const result = importer._createPawRequest.apply(
+            mockedImporter,
+            [ request ]
+        )
+
+        this.assertEqual(result, 12)
+        this.assertEqual(
+            mockedImporter.spy._generateUrl.count, 1
+        )
+        this.assertEqual(
+            contextMock.spy.createRequest.count, 1
+        )
+
+        this.assertEqual(
+            mockedImporter.spy._generateUrl.calls[0],
+            [ null, null, new Immutable.List() ]
+        )
+
+        this.assertEqual(
+            contextMock.spy.createRequest.calls[0],
+            [ null, null, 'dummyValue' ]
         )
     }
 
@@ -508,118 +784,484 @@ export class TestBaseImporter extends UnitTest {
         )
     }
 
-    testSetAuthwithBasicAuth() {
+    testSetBasicAuth() {
         const importer = new BaseImporter()
 
+        const auth = new Auth.Basic({
+            username: '',
+            password: ''
+        })
+
+        let dv = importer._setBasicAuth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.luckymarmot.BasicAuthDynamicValue'
+        )
+
+        this.assertEqual(dv.username, '')
+        this.assertEqual(dv.password, '')
+    }
+
+    testSetBasicAuthWithInitializedValues() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.Basic({
+            username: 'luckymarmot',
+            password: 'stub'
+        })
+
+        let dv = importer._setBasicAuth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.luckymarmot.BasicAuthDynamicValue'
+        )
+
+        this.assertEqual(dv.username, 'luckymarmot')
+        this.assertEqual(dv.password, 'stub')
+    }
+
+    testSetDigestAuth() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.Digest({
+            username: '',
+            password: ''
+        })
+
+        let dv = importer._setDigestAuth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.luckymarmot.PawExtensions.DigestAuthDynamicValue'
+        )
+
+        this.assertEqual(dv.username, '')
+        this.assertEqual(dv.password, '')
+    }
+
+    testSetDigestAuthWithInitializedValues() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.Digest({
+            username: 'luckymarmot',
+            password: 'stub'
+        })
+
+        let dv = importer._setDigestAuth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.luckymarmot.PawExtensions.DigestAuthDynamicValue'
+        )
+
+        this.assertEqual(dv.username, 'luckymarmot')
+        this.assertEqual(dv.password, 'stub')
+    }
+
+    testSetOAuth1Auth() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.OAuth1()
+
+        let dv = importer._setOAuth1Auth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.luckymarmot.OAuth1HeaderDynamicValue'
+        )
+
+        this.assertEqual(dv.callback, '')
+        this.assertEqual(dv.consumerKey, '')
+        this.assertEqual(dv.consumerSecret, '')
+        this.assertEqual(dv.tokenSecret, '')
+        this.assertEqual(dv.algorithm, '')
+        this.assertEqual(dv.nonce, '')
+        this.assertEqual(dv.timestamp, '')
+        this.assertEqual(dv.token, '')
+    }
+
+    testSetOAuth1AuthWithInitialValues() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.OAuth1({
+            callback: 'fakeurl.com/oauth1/callback',
+            consumerKey: 'aeda',
+            consumerSecret: 'fedae',
+            tokenSecret: '123123',
+            algorithm: 'SHA-256',
+            nonce: '20192835',
+            timestamp: '1509850198250',
+            token: 'token'
+        })
+
+        let dv = importer._setOAuth1Auth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.luckymarmot.OAuth1HeaderDynamicValue'
+        )
+
+        this.assertEqual(dv.callback, 'fakeurl.com/oauth1/callback')
+        this.assertEqual(dv.consumerKey, 'aeda')
+        this.assertEqual(dv.consumerSecret, 'fedae')
+        this.assertEqual(dv.tokenSecret, '123123')
+        this.assertEqual(dv.algorithm, 'SHA-256')
+        this.assertEqual(dv.nonce, '20192835')
+        this.assertEqual(dv.timestamp, '1509850198250')
+        this.assertEqual(dv.token, 'token')
+    }
+
+    testSetOAuth2Auth() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.OAuth2()
+
+        let dv = importer._setOAuth2Auth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.luckymarmot.OAuth2DynamicValue'
+        )
+
+        this.assertEqual(dv.grantType, 0)
+        this.assertEqual(dv.authorizationUrl, '')
+        this.assertEqual(dv.accessTokenUrl, '')
+        this.assertEqual(dv.scope, '')
+    }
+
+    testSetOAuth2AuthWithInitialValues() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.OAuth2({
+            flow: 'implicit',
+            authorizationUrl: 'fakeurl.com/oauth2',
+            tokenUrl: 'fakeurl.com/oauth2/access-token',
+            scopes: [ 'user:write', 'user:read' ]
+        })
+
+        let dv = importer._setOAuth2Auth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.luckymarmot.OAuth2DynamicValue'
+        )
+
+        this.assertEqual(dv.grantType, 1)
+        this.assertEqual(dv.authorizationUrl, 'fakeurl.com/oauth2')
+        this.assertEqual(dv.accessTokenUrl, 'fakeurl.com/oauth2/access-token')
+        this.assertEqual(dv.scope, 'user:write user:read')
+    }
+
+    testSetAWSSig4Auth() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.AWSSig4()
+
+        let dv = importer._setAWSSig4Auth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.shigeoka.PawExtensions.AWSSignature4DynamicValue'
+        )
+
+        this.assertEqual(dv.key, '')
+        this.assertEqual(dv.secret, '')
+        this.assertEqual(dv.region, '')
+        this.assertEqual(dv.service, '')
+    }
+
+    testSetAWSSig4AuthWithInitialValues() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.AWSSig4({
+            key: 'secretKey',
+            secret: 'secretSecret',
+            region: 'us-east-1',
+            service: 'execute-api'
+        })
+
+        let dv = importer._setAWSSig4Auth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'com.shigeoka.PawExtensions.AWSSignature4DynamicValue'
+        )
+
+        this.assertEqual(dv.key, 'secretKey')
+        this.assertEqual(dv.secret, 'secretSecret')
+        this.assertEqual(dv.region, 'us-east-1')
+        this.assertEqual(dv.service, 'execute-api')
+    }
+
+    testSetHawkAuth() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.Hawk()
+
+        let dv = importer._setHawkAuth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'uk.co.jalada.PawExtensions.HawkDynamicValue'
+        )
+
+        this.assertEqual(dv.key, '')
+        this.assertEqual(dv.id, '')
+        this.assertEqual(dv.algorithm, '')
+    }
+
+    testSetHawkAuthWithInitialValues() {
+        const importer = new BaseImporter()
+
+        const auth = new Auth.Hawk({
+            key: 'secretKey',
+            id: 'secretId',
+            algorithm: 'MD5'
+        })
+
+        let dv = importer._setHawkAuth(auth)
+
+        this.assertEqual(
+            dv.type,
+            'uk.co.jalada.PawExtensions.HawkDynamicValue'
+        )
+
+        this.assertEqual(dv.key, 'secretKey')
+        this.assertEqual(dv.id, 'secretId')
+        this.assertEqual(dv.algorithm, 'MD5')
+    }
+
+    testSetAuthwithBasicAuth() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
         const requestMock = new PawRequestMock(null, '')
         const auths = new Immutable.List([
             new Auth.Basic()
         ])
 
-        importer._setAuth(requestMock, auths)
+        mockedImporter.spyOn('_setBasicAuth', () => {
+            return 'basicAuth'
+        })
+
+        importer._setAuth.apply(
+            mockedImporter,
+            [ requestMock, auths ]
+        )
 
         this.assertTrue(requestMock.spy.setHeader.count === 1)
-        this.__compareDynamicValuesInDynamicStrings(
-            requestMock.spy.setHeader.calls[0][1],
-            new DynamicString(
-                new DynamicValue(
-                    'com.luckymarmot.BasicAuthDynamicValue',
-                    {
-                        username: '',
-                        password: ''
-                    }
-                )
-            ),
-            [ 'type', 'username', 'password' ]
+        this.assertEqual(
+            requestMock.spy.setHeader.calls[0][1].components,
+            [ 'basicAuth' ]
         )
     }
 
-    testSetAuthwithInitializedBasicAuth() {
+    testSetAuthwithDigestAuth() {
         const importer = new BaseImporter()
-
+        const mockedImporter = new ClassMock(importer, '')
         const requestMock = new PawRequestMock(null, '')
         const auths = new Immutable.List([
-            new Auth.Basic({
-                username: 'luckymarmot',
-                password: 'stub'
-            })
+            new Auth.Digest()
         ])
 
-        importer._setAuth(requestMock, auths)
+        mockedImporter.spyOn('_setDigestAuth', () => {
+            return 'digestAuth'
+        })
+
+        importer._setAuth.apply(
+            mockedImporter,
+            [ requestMock, auths ]
+        )
 
         this.assertTrue(requestMock.spy.setHeader.count === 1)
-        this.__compareDynamicValuesInDynamicStrings(
-            requestMock.spy.setHeader.calls[0][1],
-            new DynamicString(
-                new DynamicValue(
-                    'com.luckymarmot.BasicAuthDynamicValue',
-                    {
-                        username: 'luckymarmot',
-                        password: 'stub'
-                    }
-                )
-            ),
-            [ 'type', 'username', 'password' ]
+        this.assertEqual(
+            requestMock.spy.setHeader.calls[0][1].components,
+            [ 'digestAuth' ]
         )
     }
 
-    testSetAuthwithOAuth2() {
+    testSetAuthwithOAuth1Auth() {
         const importer = new BaseImporter()
-
+        const mockedImporter = new ClassMock(importer, '')
         const requestMock = new PawRequestMock(null, '')
-        const auth = new Immutable.List([
+        const auths = new Immutable.List([
+            new Auth.OAuth1()
+        ])
+
+        mockedImporter.spyOn('_setOAuth1Auth', () => {
+            return 'oauth1Auth'
+        })
+
+        importer._setAuth.apply(
+            mockedImporter,
+            [ requestMock, auths ]
+        )
+
+        this.assertTrue(requestMock.spy.setHeader.count === 1)
+        this.assertEqual(
+            requestMock.spy.setHeader.calls[0][1].components,
+            [ 'oauth1Auth' ]
+        )
+    }
+
+    testSetAuthwithOAuth2Auth() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const requestMock = new PawRequestMock(null, '')
+        const auths = new Immutable.List([
             new Auth.OAuth2()
         ])
 
-        importer._setAuth(requestMock, auth)
+        mockedImporter.spyOn('_setOAuth2Auth', () => {
+            return 'oauth2Auth'
+        })
+
+        importer._setAuth.apply(
+            mockedImporter,
+            [ requestMock, auths ]
+        )
 
         this.assertTrue(requestMock.spy.setHeader.count === 1)
-        this.__compareDynamicValuesInDynamicStrings(
-            requestMock.spy.setHeader.calls[0][1],
-            new DynamicString(
-                new DynamicValue(
-                    'com.luckymarmot.OAuth2DynamicValue',
-                    {
-                        grant_clitype: null,
-                        authorization_uri: null,
-                        access_token_uri: null,
-                        scope: ''
-                    }
-                )
-            ),
-            [ 'type', 'username', 'password' ]
+        this.assertEqual(
+            requestMock.spy.setHeader.calls[0][1].components,
+            [ 'oauth2Auth' ]
         )
     }
 
-    testSetAuthwithInitializedOAuth2() {
+    testSetAuthwithAWSSig4Auth() {
         const importer = new BaseImporter()
-
+        const mockedImporter = new ClassMock(importer, '')
         const requestMock = new PawRequestMock(null, '')
-        const auth = new Immutable.List([
-            new Auth.OAuth2({
-                flow: 'implicit',
-                authorizationUrl: 'auth.luckymarmot.com/oauth2',
-                tokenUrl: 'token.luckymarmot.com/oauth2'
+        const auths = new Immutable.List([
+            new Auth.AWSSig4()
+        ])
+
+        mockedImporter.spyOn('_setAWSSig4Auth', () => {
+            return 'awssig4Auth'
+        })
+
+        importer._setAuth.apply(
+            mockedImporter,
+            [ requestMock, auths ]
+        )
+
+        this.assertTrue(requestMock.spy.setHeader.count === 1)
+        this.assertEqual(
+            requestMock.spy.setHeader.calls[0][1].components,
+            [ 'awssig4Auth' ]
+        )
+    }
+
+    testSetAuthwithHawkAuth() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const requestMock = new PawRequestMock(null, '')
+        const auths = new Immutable.List([
+            new Auth.Hawk()
+        ])
+
+        mockedImporter.spyOn('_setHawkAuth', () => {
+            return 'hawkAuth'
+        })
+
+        importer._setAuth.apply(
+            mockedImporter,
+            [ requestMock, auths ]
+        )
+
+        this.assertTrue(requestMock.spy.setHeader.count === 1)
+        this.assertEqual(
+            requestMock.spy.setHeader.calls[0][1].components,
+            [ 'hawkAuth' ]
+        )
+    }
+
+    testSetAuthwithApiKeyAuth() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const requestMock = new PawRequestMock(null, '')
+        const auths = new Immutable.List([
+            new Auth.ApiKey({
+                in: 'header',
+                name: 'api_key',
+                key: '123123123'
             })
         ])
 
-        importer._setAuth(requestMock, auth)
+        mockedImporter.spyOn('_toDynamicString', (string) => {
+            return string
+        })
+
+        importer._setAuth.apply(
+            mockedImporter,
+            [ requestMock, auths ]
+        )
 
         this.assertTrue(requestMock.spy.setHeader.count === 1)
-        this.__compareDynamicValuesInDynamicStrings(
-            requestMock.spy.setHeader.calls[0][1],
-            new DynamicString(
-                new DynamicValue(
-                    'com.luckymarmot.OAuth2DynamicValue',
-                    {
-                        grantType: 'implicit',
-                        authorizationUrl: 'auth.luckymarmot.com/oauth2',
-                        accessTokenUrl: 'token.luckymarmot.com/oauth2',
-                        scope: ''
-                    }
-                )
-            ),
-            [ 'type', 'username', 'password' ]
+        this.assertEqual(
+            requestMock.spy.setHeader.calls[0],
+            [ 'api_key', '123123123' ]
+        )
+    }
+
+    testSetAuthwithUnknownAuth() {
+        class UnknownAuth {
+
+        }
+
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const requestMock = new PawRequestMock(null, '')
+        const auths = new Immutable.List([
+            new UnknownAuth()
+        ])
+
+        importer._setAuth.apply(
+            mockedImporter,
+            [ requestMock, auths ]
+        )
+
+        this.assertTrue(requestMock.spy.setHeader.count === 0)
+    }
+
+    testSetAuthwithMultipleAuth() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const requestMock = new PawRequestMock(null, '')
+        const auths = new Immutable.List([
+            new Auth.Basic({
+                username: 'admin',
+                password: 'admin'
+            }),
+            new Auth.ApiKey({
+                in: 'header',
+                name: 'api_key',
+                key: '123123123'
+            })
+        ])
+
+        mockedImporter.spyOn('_setBasicAuth', () => {
+            return 'basicAuth'
+        })
+
+        mockedImporter.spyOn('_toDynamicString', (string) => {
+            return string
+        })
+
+        importer._setAuth.apply(
+            mockedImporter,
+            [ requestMock, auths ]
+        )
+
+        this.assertTrue(requestMock.spy.setHeader.count === 2)
+        this.assertEqual(
+            requestMock.spy.setHeader.calls[0][1].components,
+            [ 'basicAuth' ]
+        )
+        this.assertEqual(
+            requestMock.spy.setHeader.calls[1],
+            [ 'api_key', '123123123' ]
         )
     }
 
@@ -919,6 +1561,165 @@ export class TestBaseImporter extends UnitTest {
         this.assertEqual(mockedImporter.spy._setSchemaBody.calls,
             [ [ requestMock, 'dummy body', { schema: true } ] ]
         )
+    }
+
+    testExtractQueryParamsFromAuthWithNoAuth() {
+        const importer = new BaseImporter()
+        const auths = new Immutable.List()
+
+        let result = importer._extractQueryParamsFromAuth(auths)
+
+        this.assertEqual(result, [])
+    }
+
+    testExtractQueryParamsFromAuthWithIrrelevantAuth() {
+        const importer = new BaseImporter()
+        const auths = new Immutable.List([
+            new Auth.Basic()
+        ])
+
+        let result = importer._extractQueryParamsFromAuth(auths)
+
+        this.assertEqual(result, [])
+    }
+
+    testExtractQueryParamsFromAuthWithRelevantAuthTypeButNotInQuery() {
+        const importer = new BaseImporter()
+        const auths = new Immutable.List([
+            new Auth.ApiKey({
+                in: 'header',
+                name: 'api-key',
+                key: 'not a real key'
+            })
+        ])
+
+        let result = importer._extractQueryParamsFromAuth(auths)
+
+        this.assertEqual(result, [])
+    }
+
+    testExtractQueryParamsFromAuthWithRelevantAuthTypeAndInQuery() {
+        const importer = new BaseImporter()
+        const auths = new Immutable.List([
+            new Auth.ApiKey({
+                in: 'query',
+                name: 'api-key',
+                key: 'not a real key'
+            })
+        ])
+
+        let result = importer._extractQueryParamsFromAuth(auths)
+
+        this.assertEqual(result, [
+            new KeyValue({
+                key: 'api-key',
+                value: 'not a real key'
+            })
+        ])
+    }
+
+    testGenerateUrlWithSimpleUrl() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        mockedImporter.spyOn('_toDynamicString', (string) => {
+            return string
+        })
+
+        mockedImporter.spyOn('_extractQueryParamsFromAuth', () => {
+            return []
+        })
+
+        const url = 'fakeurl.com/fake/path'
+
+        const result = importer._generateUrl.apply(
+            mockedImporter,
+            [ url ]
+        )
+
+        this.assertEqual(url, result)
+    }
+
+    testGenerateUrlWithSimpleQueryParams() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        mockedImporter.spyOn('_toDynamicString', (string) => {
+            const dyn = new DynamicString(string)
+            dyn.$$_spyOn('appendString', (str) => {
+                dyn.components.push(str)
+            })
+            return dyn
+        })
+
+        mockedImporter.spyOn('_extractQueryParamsFromAuth', () => {
+            return []
+        })
+
+        const url = 'fakeurl.com/fake/path'
+        const queries = new Immutable.List([
+            new KeyValue({
+                key: 'test',
+                value: 'new'
+            })
+        ])
+
+        const result = importer._generateUrl.apply(
+            mockedImporter,
+            [ url, queries ]
+        )
+
+        const expected = new DynamicString(url, '?', 'test', '=', 'new')
+
+        this.assertEqual(expected.components, result.components)
+    }
+
+    testGenerateUrlWithQueriesAndAuthParams() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        mockedImporter.spyOn('_toDynamicString', (string) => {
+            const dyn = new DynamicString(string)
+            dyn.$$_spyOn('appendString', (str) => {
+                dyn.components.push(str)
+            })
+            return dyn
+        })
+
+        mockedImporter.spyOn('_extractQueryParamsFromAuth', () => {
+            return [
+                new KeyValue({
+                    key: 'api-key',
+                    value: '123123123'
+                })
+            ]
+        })
+
+        const url = 'fakeurl.com/fake/path'
+        const queries = new Immutable.List([
+            new KeyValue({
+                key: 'test',
+                value: 'new'
+            })
+        ])
+        const auths = new Immutable.List([
+            new Auth.ApiKey({
+                in: 'query',
+                name: 'api-key',
+                key: '123123123'
+            })
+        ])
+
+        const result = importer._generateUrl.apply(
+            mockedImporter,
+            [ url, queries, auths ]
+        )
+
+        const expected = new DynamicString(
+            url, '?', 'test', '=', 'new', '&', 'api-key', '=', '123123123'
+        )
+
+        this.assertEqual(expected.components, result.components)
     }
 
     testImportPawRequest() {
