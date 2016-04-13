@@ -156,7 +156,7 @@ export default class BaseImporter {
         )
     }
 
-    // @not tested
+    // @tested
     _importEnvironments(environments) {
         let environmentDomain = this._getEnvironmentDomain()
 

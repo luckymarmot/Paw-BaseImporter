@@ -662,11 +662,11 @@ export class TestBaseImporter extends UnitTest {
 
         const domain = new Mock({
             createEnvironment: () => {}
-        })
+        }, '')
 
         const environment = new Mock({
             setVariablesValues: () => {}
-        })
+        }, '')
 
         mockedImporter.ENVIRONMENT_DOMAIN_NAME = 'Mocked Environment Domain'
         mockedImporter.context = contextMock
@@ -684,8 +684,8 @@ export class TestBaseImporter extends UnitTest {
             [ [
                 new Environment({
                     variables: new Immutable.OrderedMap({
-                        var: 'test',
-                        rate: '123'
+                        var: new KeyValue({ key: 'var', value: 'test' }),
+                        rate: new KeyValue({ key: 'rate', value: '123' })
                     })
                 })
             ] ]
@@ -704,8 +704,61 @@ export class TestBaseImporter extends UnitTest {
             environment.spy.setVariablesValues.calls[0],
             [ {
                 var: 'test',
-                rate: '123123'
+                rate: '123'
             } ]
+        )
+    }
+
+    testImportEnvironmentsWithMultipleEnvironments() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const contextMock = new PawContextMock(null, '')
+
+        const domain = new Mock({
+            createEnvironment: () => {}
+        }, '')
+
+        const environment = new Mock({
+            setVariablesValues: () => {}
+        }, '')
+
+        mockedImporter.ENVIRONMENT_DOMAIN_NAME = 'Mocked Environment Domain'
+        mockedImporter.context = contextMock
+
+        mockedImporter.spyOn('_getEnvironmentDomain', () => {
+            return domain
+        })
+
+        domain.spyOn('createEnvironment', () => {
+            return environment
+        })
+
+        importer._importEnvironments.apply(
+            mockedImporter,
+            [ [
+                new Environment({
+                    variables: new Immutable.OrderedMap({
+                        var: new KeyValue({ key: 'var', value: 'test' }),
+                        rate: new KeyValue({ key: 'rate', value: '123' })
+                    })
+                }),
+                new Environment({
+                    variables: new Immutable.OrderedMap({
+                        var: new KeyValue({ key: 'var2', value: 'test2' }),
+                        rate: new KeyValue({ key: 'rate2', value: '1232' })
+                    })
+                })
+            ] ]
+        )
+
+        this.assertEqual(
+            mockedImporter.spy._getEnvironmentDomain.count, 1
+        )
+        this.assertEqual(
+            domain.spy.createEnvironment.count, 2
+        )
+        this.assertEqual(
+            environment.spy.setVariablesValues.count, 2
         )
     }
 
