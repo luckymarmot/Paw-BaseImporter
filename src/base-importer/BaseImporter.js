@@ -250,11 +250,8 @@ export default class BaseImporter {
     }
 
     // @tested
-    _applyFuncOverGroupTree(group, leafFunc, nodeFunc, pawGroup, depth = 0) {
+    _applyFuncOverGroupTree(group, leafFunc, nodeFunc, pawGroup) {
         let calls = []
-        // let _path = depth < 2 ? '' : pawGroup.name
-        // _path = _path + (group.get('name') || '')
-
         let currentPawGroup = nodeFunc(group.get('name') || '', pawGroup)
         group.get('children').forEach((child) => {
             if (child instanceof Request) {
@@ -266,8 +263,7 @@ export default class BaseImporter {
                         child,
                         leafFunc,
                         nodeFunc,
-                        currentPawGroup,
-                        depth + 1
+                        currentPawGroup
                     )
                 )
             }
@@ -444,12 +440,12 @@ export default class BaseImporter {
     // @tested
     _setAuth(pawReq, auths) {
         const authTypeMap = {
-            BasicAuth: this._setBasicAuth,
-            DigestAuth: this._setDigestAuth,
-            OAuth1Auth: this._setOAuth1Auth,
-            OAuth2Auth: this._setOAuth2Auth,
-            AWSSig4Auth: this._setAWSSig4Auth,
-            HawkAuth: this._setHawkAuth
+            BasicAuth: ::this._setBasicAuth,
+            DigestAuth: ::this._setDigestAuth,
+            OAuth1Auth: ::this._setOAuth1Auth,
+            OAuth2Auth: ::this._setOAuth2Auth,
+            AWSSig4Auth: ::this._setAWSSig4Auth,
+            HawkAuth: ::this._setHawkAuth
         }
 
         for (let auth of auths) {
