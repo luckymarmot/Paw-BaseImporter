@@ -564,7 +564,7 @@ export default class BaseImporter {
         return pawReq
     }
 
-    // @tested 30%
+    // @tested 90%
     _toDynamicString(string, defaultToEmpty, resolveFileRefs) {
         if (!string) {
             if (defaultToEmpty) {
@@ -666,7 +666,7 @@ export default class BaseImporter {
         })
     }
 
-    // @not tested
+    // @tested
     _castReferenceToDynamicString(reference) {
         let components = reference.get('referenceName')
         let dynStr = []
@@ -680,7 +680,21 @@ export default class BaseImporter {
         return new DynamicString(...dynStr)
     }
 
-    // @not tested
+
+    /*
+        This does not extract all reference components,
+        but only the simple ones. e.g. a {{var1}} will
+        be extracted as var1, but {{{{var2}}}} won't.
+        {{var{{number}}}} also won't be extracted.
+
+        This is because Paw does not support variable
+        environment references: {{var{{number}}}} could
+        resolve to {{var1}}, {{var2}}, etc. depending on
+        the value {{number}} resolves to, and we can't
+        know if they exist, as {{number}} can be changed
+        on the fly by the user.
+    */
+    // @tested
     _extractReferenceComponent(component) {
         if (typeof component === 'string') {
             return component
@@ -700,5 +714,7 @@ export default class BaseImporter {
                 }
             )
         }
+
+        return null
     }
 }

@@ -4,7 +4,8 @@ import RequestContext, {
     Request,
     Auth,
     KeyValue,
-    SchemaReference
+    SchemaReference,
+    EnvironmentReference
 } from 'api-flow'
 
 import { UnitTest, registerTest } from '../../../utils/TestUtils'
@@ -153,8 +154,267 @@ export class TestBaseImporter extends UnitTest {
         )
     }
 
-    testResolveFileRefsToDynamicString() {
+    testEnvironmentReferenceToDynamicString() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
 
+        const input = new EnvironmentReference({
+            id: 123,
+            referenceName: new Immutable.List([ 'value' ])
+        })
+
+        mockedImporter.spyOn('_resolveFileReference', () => {
+            return 'not important for this test'
+        })
+
+        mockedImporter.spyOn('_castReferenceToDynamicString', () => {
+            return {
+                components: [ 'value' ]
+            }
+        })
+
+        mockedImporter.spyOn('_escapeSequenceDynamicValue', () => {
+            // this should not be called for this test
+            this.assertTrue(false)
+        })
+
+        let result = importer._toDynamicString.apply(
+            mockedImporter,
+            [ input, true, true ]
+        )
+
+        this.assertEqual(
+            mockedImporter.spy._resolveFileReference.count, 1
+        )
+        this.assertEqual(
+            mockedImporter.spy._castReferenceToDynamicString.count, 1
+        )
+        this.assertEqual(
+            mockedImporter.spy._castReferenceToDynamicString.calls,
+            [ [ input ] ]
+        )
+
+        this.assertTrue(result instanceof DynamicString)
+        this.assertEqual(result.components.length, 1)
+        this.assertEqual(result.components[0], 'value')
+    }
+
+    testResolveFileRefsToDynamicString() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        const input = new FileReference({
+            filepath: 'somepath'
+        })
+
+        const output = new DynamicString(
+            new DynamicValue(
+                'com.luckymarmot.FileContentDynamicValue', {}
+            )
+        )
+
+        mockedImporter.spyOn('_resolveFileReference', () => {
+            return output
+        })
+
+        mockedImporter.spyOn('_castReferenceToDynamicString', () => {
+            // this should not be called for this test
+            this.assertTrue(false)
+        })
+
+        mockedImporter.spyOn('_escapeSequenceDynamicValue', () => {
+            // this should not be called for this test
+            this.assertTrue(false)
+        })
+
+        let result = importer._toDynamicString.apply(
+            mockedImporter,
+            [ input, true, true ]
+        )
+
+        this.assertEqual(
+            mockedImporter.spy._resolveFileReference.count, 1
+        )
+        this.assertEqual(
+            mockedImporter.spy._resolveFileReference.calls,
+            [ [ input ] ]
+        )
+
+        this.assertTrue(result instanceof DynamicString)
+        this.assertEqual(result.components.length, 1)
+        this.assertEqual(result, output)
+    }
+
+    testExtractReferenceComponentWithString() {
+        const importer = new BaseImporter()
+        const input = 'testString'
+
+        const result = importer._extractReferenceComponent(input)
+        this.assertEqual(input, result)
+    }
+
+    testExtractReferenceComponentWithSimpleReference() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        mockedImporter.spyOn('_getEnvironmentVariable', () => {
+            return {
+                id: 42
+            }
+        })
+
+        const input = new EnvironmentReference({
+            referenceName: new Immutable.List([ 'value' ])
+        })
+
+        const expected = new DynamicValue(
+            'com.luckymarmot.EnvironmentVariableDynamicValue',
+            {
+                environmentVariable: 42
+            }
+        )
+
+        const result = importer._extractReferenceComponent.apply(
+            mockedImporter,
+            [ input ]
+        )
+
+        this.assertEqual(mockedImporter.spy._getEnvironmentVariable.count, 1)
+        this.assertEqual(
+            mockedImporter.spy._getEnvironmentVariable.calls,
+            [ [ 'value' ] ]
+        )
+        this.assertEqual(expected.type, result.type)
+        this.assertEqual(
+            expected.environmentVariable,
+            result.environmentVariable
+        )
+    }
+
+    testExtractReferenceComponentWithComplexReference() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        mockedImporter.spyOn('_getEnvironmentVariable', () => {
+            this.assertTrue(false)
+        })
+
+        const input = new EnvironmentReference({
+            referenceName: new Immutable.List([
+                'value',
+                new EnvironmentReference()
+            ])
+        })
+
+        const expected = null
+
+        const result = importer._extractReferenceComponent.apply(
+            mockedImporter,
+            [ input ]
+        )
+
+        this.assertEqual(expected, result)
+    }
+
+    testCastReferenceToDynamicStringWithSimpleReference() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        mockedImporter.spyOn('_extractReferenceComponent', () => {
+            return 'mock'
+        })
+
+        const input = new EnvironmentReference({
+            referenceName: new Immutable.List([
+                'value'
+            ])
+        })
+
+        const expected = new DynamicString('mock')
+
+        const result = importer._castReferenceToDynamicString.apply(
+            mockedImporter,
+            [ input ]
+        )
+
+        this.assertEqual(expected.components, result.components)
+    }
+
+    testCastReferenceToDynamicStringWithRichReference() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        let counter = 0
+        mockedImporter.spyOn('_extractReferenceComponent', () => {
+            counter += 1
+            return 'mock' + counter
+        })
+
+        const input = new EnvironmentReference({
+            referenceName: new Immutable.List([
+                new EnvironmentReference({
+                    referenceName: new Immutable.List([
+                        'uuid'
+                    ])
+                }),
+                '-',
+                new EnvironmentReference({
+                    referenceName: new Immutable.List([
+                        'tid'
+                    ])
+                })
+            ])
+        })
+
+        const expected = new DynamicString('mock1', 'mock2', 'mock3')
+
+        const result = importer._castReferenceToDynamicString.apply(
+            mockedImporter,
+            [ input ]
+        )
+
+        this.assertEqual(mockedImporter.spy._extractReferenceComponent.count, 3)
+        this.assertEqual(expected.components, result.components)
+    }
+
+    testCastReferenceToDynamicStringWithTooComplexReference() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+
+        let counter = 0
+        mockedImporter.spyOn('_extractReferenceComponent', () => {
+            if (counter) {
+                return null
+            }
+            counter += 1
+            return 'mock' + counter
+        })
+
+        const input = new EnvironmentReference({
+            referenceName: new Immutable.List([
+                new EnvironmentReference({
+                    referenceName: new Immutable.List([
+                        'uuid'
+                    ])
+                }),
+                '-',
+                new EnvironmentReference({
+                    referenceName: new Immutable.List([
+                        'tid'
+                    ])
+                })
+            ])
+        })
+
+        const expected = new DynamicString('mock1')
+
+        const result = importer._castReferenceToDynamicString.apply(
+            mockedImporter,
+            [ input ]
+        )
+
+        this.assertEqual(mockedImporter.spy._extractReferenceComponent.count, 3)
+        this.assertEqual(expected.components, result.components)
     }
 
     testSimpleCreatePawRequest() {
