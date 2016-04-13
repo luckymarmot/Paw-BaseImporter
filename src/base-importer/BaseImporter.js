@@ -69,13 +69,19 @@ export default class BaseImporter {
         // resolve file references
         if (resolveFileRefs) {
             const resolvedString = this._resolveFileReference(string)
-            if (resolvedString instanceof DynamicString) {
+            if (
+                typeof resolvedString !== 'string' &&
+                resolvedString instanceof DynamicString
+            ) {
                 return resolvedString
             }
         }
 
         let envComponents = []
-        if (string instanceof EnvironmentReference) {
+        if (
+            typeof string !== 'string' &&
+            string instanceof EnvironmentReference
+        ) {
             envComponents = this._castReferenceToDynamicString(
                 string
             ).components
@@ -103,6 +109,7 @@ export default class BaseImporter {
                 }
             }
         }
+
 
         return new DynamicString(...components)
     }

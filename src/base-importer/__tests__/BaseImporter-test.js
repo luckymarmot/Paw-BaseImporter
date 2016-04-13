@@ -165,7 +165,8 @@ export class TestBaseImporter extends UnitTest {
             url: 'http://fakeurl.com'
         })
 
-        importer._createPawRequest(contextMock, input)
+        importer.context = contextMock
+        importer._createPawRequest(input)
 
         this.assertTrue(contextMock.spy.createRequest.count === 1)
         this.assertEqual(
@@ -188,7 +189,8 @@ export class TestBaseImporter extends UnitTest {
             url: 'http://fakeurl.com'
         })
 
-        importer._createPawRequest(contextMock, input)
+        importer.context = contextMock
+        importer._createPawRequest(input)
 
         this.assertTrue(contextMock.spy.createRequest.count === 1)
         this.assertEqual(
@@ -263,8 +265,8 @@ export class TestBaseImporter extends UnitTest {
                 new DynamicValue(
                     'com.luckymarmot.BasicAuthDynamicValue',
                     {
-                        username: null,
-                        password: null
+                        username: '',
+                        password: ''
                     }
                 )
             ),
@@ -677,7 +679,8 @@ export class TestBaseImporter extends UnitTest {
             body: 'dummy body'
         })
 
-        mockedImporter.spyOn('_createPawRequest', (context, req) => {
+        mockedImporter.context = contextMock
+        mockedImporter.spyOn('_createPawRequest', (req) => {
             this.assertEqual(
                 req.get('url'), 'dummyURL',
                 req.get('method'), 'POST'
@@ -724,7 +727,6 @@ export class TestBaseImporter extends UnitTest {
         importer._importPawRequest.apply(
             mockedImporter,
             [
-                contextMock,
                 null,
                 { appendChild: () => {} },
                 request,
@@ -750,10 +752,15 @@ export class TestBaseImporter extends UnitTest {
 
         const mockedImporter = new ClassMock(importer, '')
         const contextMock = new PawContextMock()
-
         const reqContext = new RequestContext()
+
         mockedImporter.spyOn('createRequestContext', () => {
-            return reqContext
+            return [
+                {
+                    context: reqContext,
+                    items: []
+                }
+            ]
         })
 
         mockedImporter.spyOn('_importPawRequests', () => {})
@@ -765,13 +772,15 @@ export class TestBaseImporter extends UnitTest {
 
         this.assertEqual(mockedImporter.spy.createRequestContext.count, 1)
         this.assertEqual(mockedImporter.spy.createRequestContext.calls,
-            [ [ contextMock, null, null ] ]
+            [ [ [], contextMock, null, null ] ]
         )
 
         this.assertEqual(mockedImporter.spy._importPawRequests.count, 1)
+        /* eslint-disable no-undefined */
         this.assertEqual(mockedImporter.spy._importPawRequests.calls,
-            [ [ contextMock, reqContext, null, null ] ]
+            [ [ reqContext, undefined, null ] ]
         )
+        /* eslint-enable no-undefined */
     }
 
     //
