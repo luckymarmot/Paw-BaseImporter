@@ -5,6 +5,7 @@ import RequestContext, {
     Auth,
     KeyValue,
     SchemaReference,
+    Environment,
     EnvironmentReference
 } from 'api-flow'
 
@@ -651,6 +652,60 @@ export class TestBaseImporter extends UnitTest {
         )
         this.assertEqual(
             environment.spy.setVariablesValues.count, 0
+        )
+    }
+
+    testImportEnvironments() {
+        const importer = new BaseImporter()
+        const mockedImporter = new ClassMock(importer, '')
+        const contextMock = new PawContextMock(null, '')
+
+        const domain = new Mock({
+            createEnvironment: () => {}
+        })
+
+        const environment = new Mock({
+            setVariablesValues: () => {}
+        })
+
+        mockedImporter.ENVIRONMENT_DOMAIN_NAME = 'Mocked Environment Domain'
+        mockedImporter.context = contextMock
+
+        mockedImporter.spyOn('_getEnvironmentDomain', () => {
+            return domain
+        })
+
+        domain.spyOn('createEnvironment', () => {
+            return environment
+        })
+
+        importer._importEnvironments.apply(
+            mockedImporter,
+            [ [
+                new Environment({
+                    variables: new Immutable.OrderedMap({
+                        var: 'test',
+                        rate: '123'
+                    })
+                })
+            ] ]
+        )
+
+        this.assertEqual(
+            mockedImporter.spy._getEnvironmentDomain.count, 1
+        )
+        this.assertEqual(
+            domain.spy.createEnvironment.count, 1
+        )
+        this.assertEqual(
+            environment.spy.setVariablesValues.count, 1
+        )
+        this.assertEqual(
+            environment.spy.setVariablesValues.calls[0],
+            [ {
+                var: 'test',
+                rate: '123123'
+            } ]
         )
     }
 

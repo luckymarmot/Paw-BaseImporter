@@ -158,13 +158,7 @@ export default class BaseImporter {
 
     // @not tested
     _importEnvironments(environments) {
-        const domainName = this.ENVIRONMENT_DOMAIN_NAME
-        let environmentDomain = this.context
-            .getEnvironmentDomainByName(domainName)
-
-        if (!environmentDomain) {
-            environmentDomain = this.context.createEnvironmentDomain(domainName)
-        }
+        let environmentDomain = this._getEnvironmentDomain()
 
         for (let env of environments) {
             let pawEnv = environmentDomain.createEnvironment(env.name)
