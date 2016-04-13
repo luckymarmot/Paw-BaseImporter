@@ -352,9 +352,9 @@ export class TestBaseImporter extends UnitTest {
                 new DynamicValue(
                     'com.luckymarmot.OAuth2DynamicValue',
                     {
-                        grant_clitype: 'implicit',
-                        authorization_uri: 'auth.luckymarmot.com/oauth2',
-                        access_token_uri: 'token.luckymarmot.com/oauth2',
+                        grantType: 'implicit',
+                        authorizationUrl: 'auth.luckymarmot.com/oauth2',
+                        accessTokenUrl: 'token.luckymarmot.com/oauth2',
                         scope: ''
                     }
                 )
@@ -672,9 +672,11 @@ export class TestBaseImporter extends UnitTest {
             headers: new Immutable.OrderedMap({
                 fake: 'header'
             }),
-            auth: new Auth.Basic({
-                username: 'marmot'
-            }),
+            auth: new Immutable.List([
+                new Auth.Basic({
+                    username: 'marmot'
+                })
+            ]),
             bodyType: 'plain',
             body: 'dummy body'
         })
@@ -704,9 +706,11 @@ export class TestBaseImporter extends UnitTest {
 
         mockedImporter.spyOn('_setAuth', (req, auth) => {
             this.assertEqual(
-                auth, new Auth.Basic({
-                    username: 'marmot'
-                })
+                auth, new Immutable.List([
+                    new Auth.Basic({
+                        username: 'marmot'
+                    })
+                ])
             )
             return {}
         })
