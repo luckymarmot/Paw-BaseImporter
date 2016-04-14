@@ -357,8 +357,12 @@ export default class BaseImporter {
         return new DynamicValue(
             'com.luckymarmot.BasicAuthDynamicValue',
             {
-                username: auth.get('username') || '',
-                password: auth.get('password') || ''
+                username: this._toDynamicString(
+                    auth.get('username') || '', true, true
+                ),
+                password: this._toDynamicString(
+                    auth.get('password') || '', true, true
+                )
             }
         )
     }
@@ -368,8 +372,12 @@ export default class BaseImporter {
         return new DynamicValue(
             'com.luckymarmot.PawExtensions.DigestAuthDynamicValue',
             {
-                username: auth.get('username'),
-                password: auth.get('password')
+                username: this._toDynamicString(
+                    auth.get('username'), true, true
+                ),
+                password: this._toDynamicString(
+                    auth.get('password'), true, true
+                )
             }
         )
     }
@@ -379,16 +387,30 @@ export default class BaseImporter {
         return new DynamicValue(
             'com.luckymarmot.OAuth1HeaderDynamicValue',
             {
-                callback: auth.get('callback') || '',
-                consumerKey: auth.get('consumerKey') || '',
-                consumerSecret: auth.get('consumerSecret') || '',
-                tokenSecret: auth.get('tokenSecret') || '',
+                callback: this._toDynamicString(
+                    auth.get('callback') || '', true, true
+                ),
+                consumerKey: this._toDynamicString(
+                    auth.get('consumerKey') || '', true, true
+                ),
+                consumerSecret: this._toDynamicString(
+                    auth.get('consumerSecret') || '', true, true
+                ),
+                tokenSecret: this._toDynamicString(
+                    auth.get('tokenSecret') || '', true, true
+                ),
                 algorithm: auth.get('algorithm') || '',
-                nonce: auth.get('nonce') || '',
+                nonce: this._toDynamicString(
+                    auth.get('nonce') || '', true, true
+                ),
                 additionalParamaters: auth
                     .get('additionalParamaters') || '',
-                timestamp: auth.get('timestamp') || '',
-                token: auth.get('token') || ''
+                timestamp: this._toDynamicString(
+                    auth.get('timestamp') || '', true, true
+                ),
+                token: this._toDynamicString(
+                    auth.get('token') || '', true, true
+                )
             }
         )
     }
@@ -405,8 +427,12 @@ export default class BaseImporter {
             'com.luckymarmot.OAuth2DynamicValue',
             {
                 grantType: grantMap[auth.get('flow')] || 0,
-                authorizationUrl: auth.get('authorizationUrl') || '',
-                accessTokenUrl: auth.get('tokenUrl') || '',
+                authorizationUrl: this._toDynamicString(
+                    auth.get('authorizationUrl') || '', true, true
+                ),
+                accessTokenUrl: this._toDynamicString(
+                    auth.get('tokenUrl') || '', true, true
+                ),
                 scope: (auth.get('scopes') || []).join(' ')
             }
         )
@@ -417,10 +443,18 @@ export default class BaseImporter {
         return new DynamicValue(
             'com.shigeoka.PawExtensions.AWSSignature4DynamicValue',
             {
-                key: auth.get('key') || '',
-                secret: auth.get('secret') || '',
-                region: auth.get('region') || '',
-                service: auth.get('service') || ''
+                key: this._toDynamicString(
+                    auth.get('key') || '', true, true
+                ),
+                secret: this._toDynamicString(
+                    auth.get('secret') || '', true, true
+                ),
+                region: this._toDynamicString(
+                    auth.get('region') || '', true, true
+                ),
+                service: this._toDynamicString(
+                    auth.get('service') || '', true, true
+                )
             }
         )
     }
@@ -430,9 +464,15 @@ export default class BaseImporter {
         return new DynamicValue(
             'uk.co.jalada.PawExtensions.HawkDynamicValue',
             {
-                key: auth.get('key') || '',
-                id: auth.get('id') || '',
-                algorithm: auth.get('algorithm') || ''
+                key: this._toDynamicString(
+                    auth.get('key') || '', true, true
+                ),
+                id: this._toDynamicString(
+                    auth.get('id') || '', true, true
+                ),
+                algorithm: this._toDynamicString(
+                    auth.get('algorithm') || '', true, true
+                )
             }
         )
     }
@@ -530,16 +570,28 @@ export default class BaseImporter {
 
     // @tested
     _setPlainBody(pawReq, body) {
-        pawReq.body = this._toDynamicString(
-            body || '', true, true
-        )
-
+        pawReq.body = body || ''
         return pawReq
     }
 
     // @tested
     _setJSONBody(pawReq, body) {
-        pawReq.body = body
+        if (typeof body === 'string') {
+            try {
+                pawReq.jsonBody = JSON.parse(body)
+            }
+            catch (e) {
+                /* eslint-disable no-console */
+                console.error(
+                    'body was set to JSON, but we couldn\'t parse it'
+                )
+                /* eslint-enable no-console */
+                pawReq.body = body
+            }
+        }
+        else {
+            pawReq.jsonBody = body
+        }
 
         return pawReq
     }

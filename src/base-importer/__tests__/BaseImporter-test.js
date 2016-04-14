@@ -907,8 +907,8 @@ export class TestBaseImporter extends UnitTest {
             'com.luckymarmot.BasicAuthDynamicValue'
         )
 
-        this.assertEqual(dv.username, '')
-        this.assertEqual(dv.password, '')
+        this.assertEqual(dv.username.components, [ '' ])
+        this.assertEqual(dv.password.components, [ '' ])
     }
 
     testSetBasicAuthWithInitializedValues() {
@@ -926,8 +926,8 @@ export class TestBaseImporter extends UnitTest {
             'com.luckymarmot.BasicAuthDynamicValue'
         )
 
-        this.assertEqual(dv.username, 'luckymarmot')
-        this.assertEqual(dv.password, 'stub')
+        this.assertEqual(dv.username.components, [ 'luckymarmot' ])
+        this.assertEqual(dv.password.components, [ 'stub' ])
     }
 
     testSetDigestAuth() {
@@ -945,8 +945,8 @@ export class TestBaseImporter extends UnitTest {
             'com.luckymarmot.PawExtensions.DigestAuthDynamicValue'
         )
 
-        this.assertEqual(dv.username, '')
-        this.assertEqual(dv.password, '')
+        this.assertEqual(dv.username.components, [ '' ])
+        this.assertEqual(dv.password.components, [ '' ])
     }
 
     testSetDigestAuthWithInitializedValues() {
@@ -964,8 +964,8 @@ export class TestBaseImporter extends UnitTest {
             'com.luckymarmot.PawExtensions.DigestAuthDynamicValue'
         )
 
-        this.assertEqual(dv.username, 'luckymarmot')
-        this.assertEqual(dv.password, 'stub')
+        this.assertEqual(dv.username.components, [ 'luckymarmot' ])
+        this.assertEqual(dv.password.components, [ 'stub' ])
     }
 
     testSetOAuth1Auth() {
@@ -980,21 +980,21 @@ export class TestBaseImporter extends UnitTest {
             'com.luckymarmot.OAuth1HeaderDynamicValue'
         )
 
-        this.assertEqual(dv.callback, '')
-        this.assertEqual(dv.consumerKey, '')
-        this.assertEqual(dv.consumerSecret, '')
-        this.assertEqual(dv.tokenSecret, '')
+        this.assertEqual(dv.callback.components, [ '' ])
+        this.assertEqual(dv.consumerKey.components, [ '' ])
+        this.assertEqual(dv.consumerSecret.components, [ '' ])
+        this.assertEqual(dv.tokenSecret.components, [ '' ])
         this.assertEqual(dv.algorithm, '')
-        this.assertEqual(dv.nonce, '')
-        this.assertEqual(dv.timestamp, '')
-        this.assertEqual(dv.token, '')
+        this.assertEqual(dv.nonce.components, [ '' ])
+        this.assertEqual(dv.timestamp.components, [ '' ])
+        this.assertEqual(dv.token.components, [ '' ])
     }
 
     testSetOAuth1AuthWithInitialValues() {
         const importer = new BaseImporter()
 
         const auth = new Auth.OAuth1({
-            callback: 'fakeurl.com/oauth1/callback',
+            callback: 'fakeurl.com/oauth1',
             consumerKey: 'aeda',
             consumerSecret: 'fedae',
             tokenSecret: '123123',
@@ -1011,14 +1011,14 @@ export class TestBaseImporter extends UnitTest {
             'com.luckymarmot.OAuth1HeaderDynamicValue'
         )
 
-        this.assertEqual(dv.callback, 'fakeurl.com/oauth1/callback')
-        this.assertEqual(dv.consumerKey, 'aeda')
-        this.assertEqual(dv.consumerSecret, 'fedae')
-        this.assertEqual(dv.tokenSecret, '123123')
+        this.assertEqual(dv.callback.components, [ 'fakeurl.com/oauth1' ])
+        this.assertEqual(dv.consumerKey.components, [ 'aeda' ])
+        this.assertEqual(dv.consumerSecret.components, [ 'fedae' ])
+        this.assertEqual(dv.tokenSecret.components, [ '123123' ])
         this.assertEqual(dv.algorithm, 'SHA-256')
-        this.assertEqual(dv.nonce, '20192835')
-        this.assertEqual(dv.timestamp, '1509850198250')
-        this.assertEqual(dv.token, 'token')
+        this.assertEqual(dv.nonce.components, [ '20192835' ])
+        this.assertEqual(dv.timestamp.components, [ '1509850198250' ])
+        this.assertEqual(dv.token.components, [ 'token' ])
     }
 
     testSetOAuth2Auth() {
@@ -1034,8 +1034,8 @@ export class TestBaseImporter extends UnitTest {
         )
 
         this.assertEqual(dv.grantType, 0)
-        this.assertEqual(dv.authorizationUrl, '')
-        this.assertEqual(dv.accessTokenUrl, '')
+        this.assertEqual(dv.authorizationUrl.components, [ '' ])
+        this.assertEqual(dv.accessTokenUrl.components, [ '' ])
         this.assertEqual(dv.scope, '')
     }
 
@@ -1057,8 +1057,14 @@ export class TestBaseImporter extends UnitTest {
         )
 
         this.assertEqual(dv.grantType, 1)
-        this.assertEqual(dv.authorizationUrl, 'fakeurl.com/oauth2')
-        this.assertEqual(dv.accessTokenUrl, 'fakeurl.com/oauth2/access-token')
+        this.assertEqual(
+            dv.authorizationUrl.components,
+            [ 'fakeurl.com/oauth2' ]
+        )
+        this.assertEqual(
+            dv.accessTokenUrl.components,
+            [ 'fakeurl.com/oauth2/access-token' ]
+        )
         this.assertEqual(dv.scope, 'user:write user:read')
     }
 
@@ -1074,10 +1080,10 @@ export class TestBaseImporter extends UnitTest {
             'com.shigeoka.PawExtensions.AWSSignature4DynamicValue'
         )
 
-        this.assertEqual(dv.key, '')
-        this.assertEqual(dv.secret, '')
-        this.assertEqual(dv.region, '')
-        this.assertEqual(dv.service, '')
+        this.assertEqual(dv.key.components, [ '' ])
+        this.assertEqual(dv.secret.components, [ '' ])
+        this.assertEqual(dv.region.components, [ '' ])
+        this.assertEqual(dv.service.components, [ '' ])
     }
 
     testSetAWSSig4AuthWithInitialValues() {
@@ -1097,10 +1103,10 @@ export class TestBaseImporter extends UnitTest {
             'com.shigeoka.PawExtensions.AWSSignature4DynamicValue'
         )
 
-        this.assertEqual(dv.key, 'secretKey')
-        this.assertEqual(dv.secret, 'secretSecret')
-        this.assertEqual(dv.region, 'us-east-1')
-        this.assertEqual(dv.service, 'execute-api')
+        this.assertEqual(dv.key.components, [ 'secretKey' ])
+        this.assertEqual(dv.secret.components, [ 'secretSecret' ])
+        this.assertEqual(dv.region.components, [ 'us-east-1' ])
+        this.assertEqual(dv.service.components, [ 'execute-api' ])
     }
 
     testSetHawkAuth() {
@@ -1115,9 +1121,9 @@ export class TestBaseImporter extends UnitTest {
             'uk.co.jalada.PawExtensions.HawkDynamicValue'
         )
 
-        this.assertEqual(dv.key, '')
-        this.assertEqual(dv.id, '')
-        this.assertEqual(dv.algorithm, '')
+        this.assertEqual(dv.key.components, [ '' ])
+        this.assertEqual(dv.id.components, [ '' ])
+        this.assertEqual(dv.algorithm.components, [ '' ])
     }
 
     testSetHawkAuthWithInitialValues() {
@@ -1136,9 +1142,9 @@ export class TestBaseImporter extends UnitTest {
             'uk.co.jalada.PawExtensions.HawkDynamicValue'
         )
 
-        this.assertEqual(dv.key, 'secretKey')
-        this.assertEqual(dv.id, 'secretId')
-        this.assertEqual(dv.algorithm, 'MD5')
+        this.assertEqual(dv.key.components, [ 'secretKey' ])
+        this.assertEqual(dv.id.components, [ 'secretId' ])
+        this.assertEqual(dv.algorithm.components, [ 'MD5' ])
     }
 
     testSetAuthwithBasicAuth() {
@@ -1453,19 +1459,12 @@ export class TestBaseImporter extends UnitTest {
         const requestMock = new PawRequestMock()
         const body = 'simple body'
 
-        mockedImporter.spyOn('_toDynamicString', (arg) => {
-            return arg
-        })
         importer._setPlainBody.apply(
             mockedImporter,
             [ requestMock, body ]
         )
 
-        this.assertEqual(mockedImporter.spy._toDynamicString.count, 1)
-        this.assertEqual(
-            mockedImporter.spy._toDynamicString.calls,
-            [ [ 'simple body', true, true ] ]
-        )
+        this.assertEqual(requestMock.body, body)
     }
 
     testSetJSONBody() {
@@ -1477,7 +1476,7 @@ export class TestBaseImporter extends UnitTest {
         const requestMock = new PawRequestMock()
 
         importer._setJSONBody(requestMock, body)
-        this.assertEqual(requestMock.body, body)
+        this.assertEqual(requestMock.jsonBody, body)
     }
 
     testSetSchemaBody() {
