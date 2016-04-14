@@ -4,7 +4,8 @@
   "keywords": [
     "api-flow",
     "paw",
-    "paw-core"
+    "paw-core",
+    "paw-base-importer"
   ],
   "version": "0.0.22",
   "main": "lib/index.js",
